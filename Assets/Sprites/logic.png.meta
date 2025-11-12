@@ -1,0 +1,507 @@
+fileFormatVersion: 2
+guid: cea393b546b262c4b82b555e258585e8
+TextureImporter:
+  internalIDToNameTable:
+  - first:
+      213: -8903461137415549957
+    second: logic_0
+  - first:
+      213: 2983483338747908364
+    second: logic_1
+  - first:
+      213: -2132687016135092123
+    second: logic_2
+  - first:
+      213: 7868273984328659284
+    second: logic_3
+  - first:
+      213: 8443601689775553837
+    second: logic_4
+  - first:
+      213: 1755807405065116371
+    second: logic_5
+  - first:
+      213: -7254675240517262892
+    second: logic_6
+  - first:
+      213: -8530228083653575095
+    second: logic_7
+  - first:
+      213: -6559892287631600094
+    second: logic_8
+  - first:
+      213: -1693165935328965350
+    second: logic_9
+  - first:
+      213: -47319046810596279
+    second: logic_10
+  - first:
+      213: -7979853806048586970
+    second: logic_11
+  - first:
+      213: -6019752924133194396
+    second: logic_12
+  - first:
+      213: -5638600196267775021
+    second: logic_13
+  - first:
+      213: -5188736275303620150
+    second: logic_14
+  externalObjects: {}
+  serializedVersion: 13
+  mipmaps:
+    mipMapMode: 0
+    enableMipMap: 0
+    sRGBTexture: 1
+    linearTexture: 0
+    fadeOut: 0
+    borderMipMap: 0
+    mipMapsPreserveCoverage: 0
+    alphaTestReferenceValue: 0.5
+    mipMapFadeDistanceStart: 1
+    mipMapFadeDistanceEnd: 3
+  bumpmap:
+    convertToNormalMap: 0
+    externalNormalMap: 0
+    heightScale: 0.25
+    normalMapFilter: 0
+    flipGreenChannel: 0
+  isReadable: 0
+  streamingMipmaps: 0
+  streamingMipmapsPriority: 0
+  vTOnly: 0
+  ignoreMipmapLimit: 0
+  grayScaleToAlpha: 0
+  generateCubemap: 6
+  cubemapConvolution: 0
+  seamlessCubemap: 0
+  textureFormat: 1
+  maxTextureSize: 2048
+  textureSettings:
+    serializedVersion: 2
+    filterMode: 0
+    aniso: 1
+    mipBias: 0
+    wrapU: 1
+    wrapV: 1
+    wrapW: 1
+  nPOTScale: 0
+  lightmap: 0
+  compressionQuality: 50
+  spriteMode: 2
+  spriteExtrude: 1
+  spriteMeshType: 1
+  alignment: 0
+  spritePivot: {x: 0.5, y: 0.5}
+  spritePixelsToUnits: 32
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
+  spriteGenerateFallbackPhysicsShape: 1
+  alphaUsage: 1
+  alphaIsTransparency: 1
+  spriteTessellationDetail: -1
+  textureType: 8
+  textureShape: 1
+  singleChannelComponent: 0
+  flipbookRows: 1
+  flipbookColumns: 1
+  maxTextureSizeSet: 0
+  compressionQualitySet: 0
+  textureFormatSet: 0
+  ignorePngGamma: 0
+  applyGammaDecoding: 0
+  swizzle: 50462976
+  cookieLightType: 0
+  platformSettings:
+  - serializedVersion: 4
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Standalone
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  spriteSheet:
+    serializedVersion: 2
+    sprites:
+    - serializedVersion: 2
+      name: logic_0
+      rect:
+        serializedVersion: 2
+        x: 15
+        y: 2
+        width: 14
+        height: 14
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: bfbc9d0a44d807480800000000000000
+      internalID: -8903461137415549957
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: logic_1
+      rect:
+        serializedVersion: 2
+        x: 59
+        y: 2
+        width: 14
+        height: 14
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c019d571a46776920800000000000000
+      internalID: 2983483338747908364
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: logic_2
+      rect:
+        serializedVersion: 2
+        x: 103
+        y: 2
+        width: 14
+        height: 14
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5681e22557c2762e0800000000000000
+      internalID: -2132687016135092123
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: logic_3
+      rect:
+        serializedVersion: 2
+        x: 147
+        y: 2
+        width: 14
+        height: 14
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4517b573089b13d60800000000000000
+      internalID: 7868273984328659284
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: logic_4
+      rect:
+        serializedVersion: 2
+        x: 191
+        y: 2
+        width: 14
+        height: 14
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d2db5ff2003bd2570800000000000000
+      internalID: 8443601689775553837
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: logic_5
+      rect:
+        serializedVersion: 2
+        x: 546
+        y: 2
+        width: 7
+        height: 14
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3da18e04881ed5810800000000000000
+      internalID: 1755807405065116371
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: logic_6
+      rect:
+        serializedVersion: 2
+        x: 553
+        y: 2
+        width: 15
+        height: 14
+      alignment: 9
+      pivot: {x: 0, y: 0.5}
+      border: {x: 0, y: 0, z: 1, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4d1a5204e47325b90800000000000000
+      internalID: -7254675240517262892
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: logic_7
+      rect:
+        serializedVersion: 2
+        x: 590
+        y: 2
+        width: 7
+        height: 14
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 94e74c4c0ca8e9980800000000000000
+      internalID: -8530228083653575095
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: logic_8
+      rect:
+        serializedVersion: 2
+        x: 597
+        y: 2
+        width: 15
+        height: 14
+      alignment: 9
+      pivot: {x: 0, y: 0.5}
+      border: {x: 0, y: 0, z: 1, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 226d4ee58b496f4a0800000000000000
+      internalID: -6559892287631600094
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: logic_9
+      rect:
+        serializedVersion: 2
+        x: 634
+        y: 2
+        width: 7
+        height: 14
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a1dcce67d8aa088e0800000000000000
+      internalID: -1693165935328965350
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: logic_10
+      rect:
+        serializedVersion: 2
+        x: 641
+        y: 2
+        width: 15
+        height: 14
+      alignment: 9
+      pivot: {x: 0, y: 0.5}
+      border: {x: 0, y: 0, z: 1, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 94c8ebfd393e75ff0800000000000000
+      internalID: -47319046810596279
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: logic_11
+      rect:
+        serializedVersion: 2
+        x: 494
+        y: 2
+        width: 20
+        height: 14
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 5, y: 0, z: 1, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 623dce21e3dd14190800000000000000
+      internalID: -7979853806048586970
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: logic_12
+      rect:
+        serializedVersion: 2
+        x: 531
+        y: 2
+        width: 15
+        height: 14
+      alignment: 9
+      pivot: {x: 1, y: 0.5}
+      border: {x: 1, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4650c690c9a857ca0800000000000000
+      internalID: -6019752924133194396
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: logic_13
+      rect:
+        serializedVersion: 2
+        x: 575
+        y: 2
+        width: 15
+        height: 14
+      alignment: 9
+      pivot: {x: 1, y: 0.5}
+      border: {x: 1, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3dbe20ffefaafb1b0800000000000000
+      internalID: -5638600196267775021
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: logic_14
+      rect:
+        serializedVersion: 2
+        x: 619
+        y: 2
+        width: 15
+        height: 14
+      alignment: 9
+      pivot: {x: 1, y: 0.5}
+      border: {x: 1, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ac1285549d7edf7b0800000000000000
+      internalID: -5188736275303620150
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    outline: []
+    customData: 
+    physicsShape: []
+    bones: []
+    spriteID: 6826a83a607ad3d4d9c9f106a45e4350
+    internalID: 0
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
+    secondaryTextures: []
+    spriteCustomMetadata:
+      entries: []
+    nameFileIdTable:
+      logic_0: -8903461137415549957
+      logic_1: 2983483338747908364
+      logic_10: -47319046810596279
+      logic_11: -7979853806048586970
+      logic_12: -6019752924133194396
+      logic_13: -5638600196267775021
+      logic_14: -5188736275303620150
+      logic_2: -2132687016135092123
+      logic_3: 7868273984328659284
+      logic_4: 8443601689775553837
+      logic_5: 1755807405065116371
+      logic_6: -7254675240517262892
+      logic_7: -8530228083653575095
+      logic_8: -6559892287631600094
+      logic_9: -1693165935328965350
+  mipmapLimitGroupName: 
+  pSDRemoveMatte: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

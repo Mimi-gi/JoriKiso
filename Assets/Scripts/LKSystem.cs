@@ -16,48 +16,7 @@ public enum Alphabet
     H,
     I,
     J,
-    K,
-    L,
-    M,
-    N,
-    O,
-    P,
-    Q,
-    R,
-    S,
-    T,
-    U,
-    V,
-    W,
-    X,
-    Y,
-    Z,
-    a,
-    b,
-    c,
-    d,
-    e,
-    f,
-    g,
-    h,
-    i,
-    j,
-    k,
-    l,
-    m,
-    n,
-    o,
-    p,
-    q,
-    r,
-    s,
-    t,
-    u,
-    v,
-    w,
-    x,
-    y,
-    z
+    K
 }
 
 namespace FormalSystem.LK
@@ -753,6 +712,36 @@ namespace FormalSystem.LK
             }
         }
 
+    }
+
+    public class ProofTree
+    {
+        public readonly Proof Root;
+        public ProofTree(Proof root)
+        {
+            Root = root;
+        }
+
+        public bool IsValid()
+        {
+            return IsValidRecursive(Root);
+        }
+
+        private bool IsValidRecursive(Proof node)
+        {
+            // 現在の Proof.IsValid 判定（局所妥当性）が偽なら即座に偽
+            if (!node.IsValid) return false;
+
+            // 前提が無ければ葉として妥当
+            if (node.Premises == null || node.Premises.Count == 0) return true;
+
+            // すべての前提が再帰的に妥当か確認
+            foreach (var p in node.Premises)
+            {
+                if (!IsValidRecursive(p)) return false;
+            }
+            return true;
+        }
     }
 
 
