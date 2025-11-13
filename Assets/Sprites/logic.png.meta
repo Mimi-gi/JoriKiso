@@ -23,30 +23,6 @@ TextureImporter:
   - first:
       213: -7254675240517262892
     second: logic_6
-  - first:
-      213: -8530228083653575095
-    second: logic_7
-  - first:
-      213: -6559892287631600094
-    second: logic_8
-  - first:
-      213: -1693165935328965350
-    second: logic_9
-  - first:
-      213: -47319046810596279
-    second: logic_10
-  - first:
-      213: -7979853806048586970
-    second: logic_11
-  - first:
-      213: -6019752924133194396
-    second: logic_12
-  - first:
-      213: -5638600196267775021
-    second: logic_13
-  - first:
-      213: -5188736275303620150
-    second: logic_14
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -89,11 +65,11 @@ TextureImporter:
   lightmap: 0
   compressionQuality: 50
   spriteMode: 2
-  spriteExtrude: 1
-  spriteMeshType: 1
+  spriteExtrude: 0
+  spriteMeshType: 0
   alignment: 0
   spritePivot: {x: 0.5, y: 0.5}
-  spritePixelsToUnits: 32
+  spritePixelsToUnits: 50
   spriteBorder: {x: 0, y: 0, z: 0, w: 0}
   spriteGenerateFallbackPhysicsShape: 1
   alphaUsage: 1
@@ -145,10 +121,10 @@ TextureImporter:
       name: logic_0
       rect:
         serializedVersion: 2
-        x: 15
-        y: 2
-        width: 14
-        height: 14
+        x: 14
+        y: 1
+        width: 16
+        height: 16
       alignment: 0
       pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -167,10 +143,10 @@ TextureImporter:
       name: logic_1
       rect:
         serializedVersion: 2
-        x: 59
-        y: 2
-        width: 14
-        height: 14
+        x: 58
+        y: 1
+        width: 16
+        height: 16
       alignment: 0
       pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -189,10 +165,10 @@ TextureImporter:
       name: logic_2
       rect:
         serializedVersion: 2
-        x: 103
-        y: 2
-        width: 14
-        height: 14
+        x: 102
+        y: 1
+        width: 16
+        height: 16
       alignment: 0
       pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -211,10 +187,10 @@ TextureImporter:
       name: logic_3
       rect:
         serializedVersion: 2
-        x: 147
-        y: 2
-        width: 14
-        height: 14
+        x: 142
+        y: 1
+        width: 5
+        height: 16
       alignment: 0
       pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -233,13 +209,13 @@ TextureImporter:
       name: logic_4
       rect:
         serializedVersion: 2
-        x: 191
-        y: 2
-        width: 14
-        height: 14
+        x: 177
+        y: 1
+        width: 17
+        height: 16
       alignment: 0
       pivot: {x: 0.5, y: 0.5}
-      border: {x: 0, y: 0, z: 0, w: 0}
+      border: {x: 1, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
@@ -255,12 +231,12 @@ TextureImporter:
       name: logic_5
       rect:
         serializedVersion: 2
-        x: 546
-        y: 2
+        x: 238
+        y: 1
         width: 7
-        height: 14
+        height: 16
       alignment: 0
-      pivot: {x: 0, y: 0}
+      pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
@@ -277,13 +253,13 @@ TextureImporter:
       name: logic_6
       rect:
         serializedVersion: 2
-        x: 553
-        y: 2
-        width: 15
-        height: 14
-      alignment: 9
-      pivot: {x: 0, y: 0.5}
-      border: {x: 0, y: 0, z: 1, w: 0}
+        x: 282
+        y: 1
+        width: 7
+        height: 16
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
@@ -299,20 +275,20 @@ TextureImporter:
       name: logic_7
       rect:
         serializedVersion: 2
-        x: 590
-        y: 2
-        width: 7
-        height: 14
+        x: 147
+        y: 1
+        width: 17
+        height: 16
       alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 1, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: 94e74c4c0ca8e9980800000000000000
-      internalID: -8530228083653575095
+      spriteID: 6525464bcc23e6a479dcc5bb90c8196f
+      internalID: -1630098864
       vertices: []
       indices: 
       edges: []
@@ -321,20 +297,20 @@ TextureImporter:
       name: logic_8
       rect:
         serializedVersion: 2
-        x: 597
-        y: 2
-        width: 15
-        height: 14
-      alignment: 9
-      pivot: {x: 0, y: 0.5}
-      border: {x: 0, y: 0, z: 1, w: 0}
+        x: 194
+        y: 1
+        width: 7
+        height: 16
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: 226d4ee58b496f4a0800000000000000
-      internalID: -6559892287631600094
+      spriteID: 183730337dd7517409de535dfc3045cf
+      internalID: 1071347029
       vertices: []
       indices: 
       edges: []
@@ -343,130 +319,20 @@ TextureImporter:
       name: logic_9
       rect:
         serializedVersion: 2
-        x: 634
-        y: 2
-        width: 7
-        height: 14
+        x: 261
+        y: 16
+        width: 1
+        height: 1
       alignment: 0
-      pivot: {x: 0, y: 0}
+      pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: a1dcce67d8aa088e0800000000000000
-      internalID: -1693165935328965350
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: logic_10
-      rect:
-        serializedVersion: 2
-        x: 641
-        y: 2
-        width: 15
-        height: 14
-      alignment: 9
-      pivot: {x: 0, y: 0.5}
-      border: {x: 0, y: 0, z: 1, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: 94c8ebfd393e75ff0800000000000000
-      internalID: -47319046810596279
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: logic_11
-      rect:
-        serializedVersion: 2
-        x: 494
-        y: 2
-        width: 20
-        height: 14
-      alignment: 0
-      pivot: {x: 0.5, y: 0.5}
-      border: {x: 5, y: 0, z: 1, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: 623dce21e3dd14190800000000000000
-      internalID: -7979853806048586970
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: logic_12
-      rect:
-        serializedVersion: 2
-        x: 531
-        y: 2
-        width: 15
-        height: 14
-      alignment: 9
-      pivot: {x: 1, y: 0.5}
-      border: {x: 1, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: 4650c690c9a857ca0800000000000000
-      internalID: -6019752924133194396
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: logic_13
-      rect:
-        serializedVersion: 2
-        x: 575
-        y: 2
-        width: 15
-        height: 14
-      alignment: 9
-      pivot: {x: 1, y: 0.5}
-      border: {x: 1, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: 3dbe20ffefaafb1b0800000000000000
-      internalID: -5638600196267775021
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: logic_14
-      rect:
-        serializedVersion: 2
-        x: 619
-        y: 2
-        width: 15
-        height: 14
-      alignment: 9
-      pivot: {x: 1, y: 0.5}
-      border: {x: 1, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: ac1285549d7edf7b0800000000000000
-      internalID: -5188736275303620150
+      spriteID: 0ea7830eb986b0344ad07d8b3325aa65
+      internalID: 640044396
       vertices: []
       indices: 
       edges: []
@@ -475,7 +341,7 @@ TextureImporter:
     customData: 
     physicsShape: []
     bones: []
-    spriteID: 6826a83a607ad3d4d9c9f106a45e4350
+    spriteID: 261c0ebe3120a0a47bfd913cf8843053
     internalID: 0
     vertices: []
     indices: 
@@ -487,19 +353,14 @@ TextureImporter:
     nameFileIdTable:
       logic_0: -8903461137415549957
       logic_1: 2983483338747908364
-      logic_10: -47319046810596279
-      logic_11: -7979853806048586970
-      logic_12: -6019752924133194396
-      logic_13: -5638600196267775021
-      logic_14: -5188736275303620150
       logic_2: -2132687016135092123
       logic_3: 7868273984328659284
       logic_4: 8443601689775553837
       logic_5: 1755807405065116371
       logic_6: -7254675240517262892
-      logic_7: -8530228083653575095
-      logic_8: -6559892287631600094
-      logic_9: -1693165935328965350
+      logic_7: -1630098864
+      logic_8: 1071347029
+      logic_9: 640044396
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

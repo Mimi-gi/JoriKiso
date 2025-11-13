@@ -763,4 +763,14 @@ namespace FormalSystem.LK
         CR,
         //他のルールもここに追加可能
     }
+
+    public enum Kind
+    {
+        Variable,
+        Not,
+        And,
+        Or,
+        Implication
+    }
+
 }
