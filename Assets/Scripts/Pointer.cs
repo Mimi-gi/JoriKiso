@@ -17,6 +17,14 @@ public class Pointer : MonoBehaviour
             Destroy(gameObject);
         }
     }
+    void Update()
+    {
+        if(Input.GetKeyDown(KeyCode.Delete))
+        {
+            Destroy(Node.gameObject);
+            Unregister();
+        }
+    }
 
     public void Register(Node node)
     {

@@ -3,10 +3,12 @@ using UnityEngine.EventSystems;
 using FormalSystem.LK;
 public class VariableNode : Node
 {
+    [SerializeField] Alphabet alphabet;
     [SerializeField] float len = 32;
     void Start()
     {
         length.Value = len;
+        Formula = new Variable(alphabet);
     }
     public override void OnBeginDrag(PointerEventData eventData)
     {

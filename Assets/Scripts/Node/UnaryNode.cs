@@ -8,10 +8,25 @@ public class UnaryNode :Node
     [SerializeField] Frame frame;
     [SerializeField] Kind kind;
     public Frame Frame => frame;
+    ReactiveProperty<bool> isValid = new ReactiveProperty<bool>(false);
+    void Start(){
+        isValid.Subscribe(valid => {
+            if(valid){
+                switch(kind){
+                    case Kind.Not:
+                        Formula = new Not(Frame.Node.Formula);
+                        break;
+                }
+            } else {
+                Formula = null;
+            }
+        });
+    }
     void Update()
     {
         var c = (Frame != null && Frame.Node != null) ? Frame.Node.Length.CurrentValue : 32f;
         length.Value = len + c;
+        isValid.Value = (Frame != null && Frame.Node != null && Frame.Node.Formula != null);
     }
 
 
