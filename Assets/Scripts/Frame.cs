@@ -14,6 +14,7 @@ public class Frame : MonoBehaviour, IDropHandler
 
     public Node Node { get; private set; }
     public float Length { get; private set; } = 32f;
+    public RectTransform RectTransform { get { return rectTransform; } }
 
 
     public void OnDrop(PointerEventData eventData)
