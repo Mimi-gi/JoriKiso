@@ -773,4 +773,302 @@ namespace FormalSystem.LK
         Implication
     }
 
+    /// <summary>
+    /// 前提シーケント列と指定ルールから導出可能な結論シーケント候補を列挙するユーティリティ。
+    /// （既存の妥当性チェックロジックを反転し、生成方向を実装）
+    /// 注意: Weakening(WL/WR) は新しい式を任意追加するため列挙不能として空集合を返す。
+    /// </summary>
+    public static class LKInference
+    {
+        public static IEnumerable<Sequent> EnumerateConclusions(IReadOnlyList<Sequent> premises, Rule rule)
+        {
+            switch (rule)
+            {
+                case Rule.I:
+                    // 任意の式 A に対し A ⊢ A を生成。前提不要なので列挙不能 -> 空 or 全変数? ここでは空 (外部で明示生成)。
+                    return Enumerable.Empty<Sequent>();
+                case Rule.andL:
+                    return InferAndL(premises);
+                case Rule.andR:
+                    return InferAndR(premises);
+                case Rule.orR:
+                    return InferOrR(premises);
+                case Rule.orL:
+                    return InferOrL(premises);
+                case Rule.impL:
+                    return InferImpL(premises);
+                case Rule.impR:
+                    return InferImpR(premises);
+                case Rule.notL:
+                    return InferNotL(premises);
+                case Rule.notR:
+                    return InferNotR(premises);
+                case Rule.Cut:
+                    return InferCut(premises);
+                case Rule.WL:
+                case Rule.WR:
+                    // Weakening は新規式選択自由度があるため列挙不能（ユーザ入力必須）
+                    return Enumerable.Empty<Sequent>();
+                case Rule.CL:
+                    return InferCL(premises);
+                case Rule.CR:
+                    return InferCR(premises);
+                default:
+                    return Enumerable.Empty<Sequent>();
+            }
+        }
+
+        private static IEnumerable<Sequent> InferAndL(IReadOnlyList<Sequent> premises)
+        {
+            if (premises.Count != 1) return Enumerable.Empty<Sequent>();
+            var p = premises[0];
+            var antecedents = p.Antecedents;
+            var consequents = p.Consequents;
+            var results = new List<Sequent>();
+            foreach (var f in antecedents)
+            {
+                if (f is And andF)
+                {
+                    // 置換: A∧B -> A と A∧B -> B
+                    results.Add(CreateReplaceOne(antecedents, consequents, andF, andF.Left, true));
+                    results.Add(CreateReplaceOne(antecedents, consequents, andF, andF.Right, true));
+                }
+            }
+            return Distinct(results);
+        }
+
+        private static IEnumerable<Sequent> InferAndR(IReadOnlyList<Sequent> premises)
+        {
+            if (premises.Count != 2) return Enumerable.Empty<Sequent>();
+            var p0 = premises[0];
+            var p1 = premises[1];
+            var ante = new List<Formula>(p0.Antecedents);
+            ante.AddRange(p1.Antecedents);
+            var results = new List<Sequent>();
+            foreach (var a in p0.Consequents)
+            {
+                foreach (var b in p1.Consequents)
+                {
+                    var cons = new List<Formula>(p0.Consequents);
+                    cons.AddRange(p1.Consequents);
+                    // A,B を 1 つずつ除去
+                    RemoveOnce(cons, a);
+                    RemoveOnce(cons, b);
+                    cons.Add(new And(a, b));
+                    results.Add(new Sequent(new Formulas(ante), new Formulas(cons)));
+                }
+            }
+            return Distinct(results);
+        }
+
+        private static IEnumerable<Sequent> InferOrR(IReadOnlyList<Sequent> premises)
+        {
+            // 前提 Γ ⊢ Δ から Δ の任意要素 X を X∨Y に拡張するには Y の選択が必要。ここでは X∨X の形のみ列挙。
+            if (premises.Count != 1) return Enumerable.Empty<Sequent>();
+            var p = premises[0];
+            var results = new List<Sequent>();
+            foreach (var x in p.Consequents)
+            {
+                var cons = new List<Formula>(p.Consequents);
+                RemoveOnce(cons, x);
+                cons.Add(new Or(x, x));
+                results.Add(new Sequent(new Formulas(p.Antecedents), new Formulas(cons)));
+            }
+            return Distinct(results);
+        }
+
+        private static IEnumerable<Sequent> InferOrL(IReadOnlyList<Sequent> premises)
+        {
+            if (premises.Count != 2) return Enumerable.Empty<Sequent>();
+            var p0 = premises[0];
+            var p1 = premises[1];
+            var cons = new List<Formula>(p0.Consequents);
+            cons.AddRange(p1.Consequents);
+            var results = new List<Sequent>();
+            foreach (var a in p0.Antecedents)
+            {
+                foreach (var b in p1.Antecedents)
+                {
+                    var ante = new List<Formula>(p0.Antecedents);
+                    ante.AddRange(p1.Antecedents);
+                    // A,B を除去し A∨B 追加
+                    RemoveOnce(ante, a);
+                    RemoveOnce(ante, b);
+                    ante.Add(new Or(a, b));
+                    results.Add(new Sequent(new Formulas(ante), new Formulas(cons)));
+                }
+            }
+            return Distinct(results);
+        }
+
+        private static IEnumerable<Sequent> InferImpL(IReadOnlyList<Sequent> premises)
+        {
+            if (premises.Count != 2) return Enumerable.Empty<Sequent>();
+            var p0 = premises[0];
+            var p1 = premises[1];
+            var anteAll = new List<Formula>(p0.Antecedents);
+            anteAll.AddRange(p1.Antecedents);
+            var consAll = new List<Formula>(p0.Consequents);
+            consAll.AddRange(p1.Consequents);
+            var results = new List<Sequent>();
+            foreach (var A in consAll)
+            {
+                foreach (var B in anteAll)
+                {
+                    var ante = new List<Formula>(anteAll);
+                    var cons = new List<Formula>(consAll);
+                    // Remove B from ante, A from cons, add A->B to ante
+                    if (!RemoveOnce(ante, B)) continue;
+                    if (!RemoveOnce(cons, A)) continue;
+                    ante.Add(new Implication(A, B));
+                    results.Add(new Sequent(new Formulas(ante), new Formulas(cons)));
+                }
+            }
+            return Distinct(results);
+        }
+
+        private static IEnumerable<Sequent> InferImpR(IReadOnlyList<Sequent> premises)
+        {
+            if (premises.Count != 1) return Enumerable.Empty<Sequent>();
+            var p = premises[0];
+            var results = new List<Sequent>();
+            foreach (var A in p.Antecedents)
+            {
+                foreach (var B in p.Consequents)
+                {
+                    var ante = new List<Formula>(p.Antecedents);
+                    var cons = new List<Formula>(p.Consequents);
+                    if (!RemoveOnce(ante, A)) continue;
+                    if (!RemoveOnce(cons, B)) continue;
+                    cons.Add(new Implication(A, B));
+                    results.Add(new Sequent(new Formulas(ante), new Formulas(cons)));
+                }
+            }
+            return Distinct(results);
+        }
+
+        private static IEnumerable<Sequent> InferNotL(IReadOnlyList<Sequent> premises)
+        {
+            if (premises.Count != 1) return Enumerable.Empty<Sequent>();
+            var p = premises[0];
+            var results = new List<Sequent>();
+            foreach (var A in p.Consequents)
+            {
+                var ante = new List<Formula>(p.Antecedents) { new Not(A) };
+                var cons = new List<Formula>(p.Consequents);
+                if (!RemoveOnce(cons, A)) continue;
+                results.Add(new Sequent(new Formulas(ante), new Formulas(cons)));
+            }
+            return Distinct(results);
+        }
+
+        private static IEnumerable<Sequent> InferNotR(IReadOnlyList<Sequent> premises)
+        {
+            if (premises.Count != 1) return Enumerable.Empty<Sequent>();
+            var p = premises[0];
+            var results = new List<Sequent>();
+            foreach (var A in p.Antecedents)
+            {
+                var ante = new List<Formula>(p.Antecedents);
+                if (!RemoveOnce(ante, A)) continue;
+                var cons = new List<Formula>(p.Consequents) { new Not(A) };
+                results.Add(new Sequent(new Formulas(ante), new Formulas(cons)));
+            }
+            return Distinct(results);
+        }
+
+        private static IEnumerable<Sequent> InferCut(IReadOnlyList<Sequent> premises)
+        {
+            if (premises.Count != 2) return Enumerable.Empty<Sequent>();
+            var p0 = premises[0];
+            var p1 = premises[1];
+            // 共通式: 右側(第一前提後件) ∩ 左側(第二前提前件) 多重集合回数分候補
+            var common = p0.Consequents.MultisetIntersect(p1.Antecedents);
+            var results = new List<Sequent>();
+            foreach (var a in common)
+            {
+                var ante = new List<Formula>(p0.Antecedents);
+                var ante2 = new List<Formula>(p1.Antecedents);
+                RemoveOnce(ante2, a); // second premise antecedents から cut formula 除去
+                ante.AddRange(ante2);
+                var cons = new List<Formula>(p0.Consequents);
+                RemoveOnce(cons, a); // first premise consequents から除去
+                cons.AddRange(p1.Consequents);
+                results.Add(new Sequent(new Formulas(ante), new Formulas(cons)));
+            }
+            return Distinct(results);
+        }
+
+        private static IEnumerable<Sequent> InferCL(IReadOnlyList<Sequent> premises)
+        {
+            if (premises.Count != 1) return Enumerable.Empty<Sequent>();
+            var p = premises[0];
+            var results = new List<Sequent>();
+            var distinct = p.Antecedents.Distinct().ToList();
+            foreach (var f in distinct)
+            {
+                int count = p.Antecedents.CountOf(f);
+                if (count >= 2)
+                {
+                    var ante = new List<Formula>(p.Antecedents);
+                    // 全削除→1つ追加
+                    ante.RemoveAll(x => x == f);
+                    ante.Add(f);
+                    results.Add(new Sequent(new Formulas(ante), new Formulas(p.Consequents)));
+                }
+            }
+            return Distinct(results);
+        }
+
+        private static IEnumerable<Sequent> InferCR(IReadOnlyList<Sequent> premises)
+        {
+            if (premises.Count != 1) return Enumerable.Empty<Sequent>();
+            var p = premises[0];
+            var results = new List<Sequent>();
+            var distinct = p.Consequents.Distinct().ToList();
+            foreach (var f in distinct)
+            {
+                int count = p.Consequents.CountOf(f);
+                if (count >= 2)
+                {
+                    var cons = new List<Formula>(p.Consequents);
+                    cons.RemoveAll(x => x == f);
+                    cons.Add(f);
+                    results.Add(new Sequent(new Formulas(p.Antecedents), new Formulas(cons)));
+                }
+            }
+            return Distinct(results);
+        }
+
+        private static Sequent CreateReplaceOne(Formulas ante, Formulas cons, Formula target, Formula replacement, bool inAntecedent)
+        {
+            var newAnte = new List<Formula>(ante);
+            if (inAntecedent)
+            {
+                if (RemoveOnce(newAnte, target)) newAnte.Add(replacement);
+            }
+            var newCons = new List<Formula>(cons);
+            return new Sequent(new Formulas(newAnte), new Formulas(newCons));
+        }
+
+        private static bool RemoveOnce(List<Formula> list, Formula f)
+        {
+            int idx = list.FindIndex(x => x == f);
+            if (idx < 0) return false;
+            list.RemoveAt(idx);
+            return true;
+        }
+
+        private static IEnumerable<Sequent> Distinct(IEnumerable<Sequent> seqs)
+        {
+            var seen = new HashSet<(int, int)>();
+            foreach (var s in seqs)
+            {
+                int h = s.Antecedents.GetHashCode();
+                int h2 = s.Consequents.GetHashCode();
+                if (seen.Add((h, h2))) yield return s;
+            }
+        }
+    }
+
 }

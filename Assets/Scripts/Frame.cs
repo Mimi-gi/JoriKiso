@@ -94,6 +94,56 @@ public class Frame : MonoBehaviour, IDropHandler
     {
         filled = false;
     }
+
+    // 静的生成用: ポインタイベントなしで直接 Node を配置するAPI
+    public void SetNodeDirect(Node node)
+    {
+        if (node == null) return;
+        Node = node;
+        var rect = Node.GetComponent<RectTransform>();
+        if (rect != null)
+        {
+            rectTransform.sizeDelta = new Vector2(Node.Length.CurrentValue + 2, 32);
+            Length = Node.Length.CurrentValue + 2;
+            rect.SetParent(rectTransform);
+            switch (direction)
+            {
+                case Direction.Left:
+                    if (Node.TryGetComponent<VariableNode>(out var varNodeL))
+                        rect.anchoredPosition = new Vector2(1, 0);
+                    else if (Node.TryGetComponent<UnaryNode>(out var unaryNodeL))
+                        rect.anchoredPosition = new Vector2(-Node.Length.CurrentValue / 2 + 6, 0);
+                    else if (Node.TryGetComponent<BinaryNode>(out var binaryNodeL))
+                    {
+                        var childL = (binaryNodeL.LeftFrame != null && binaryNodeL.LeftFrame.Node != null)
+                                     ? binaryNodeL.LeftFrame.Node.Length.CurrentValue
+                                     : (binaryNodeL.LeftFrame != null ? binaryNodeL.LeftFrame.Length : 32f);
+                        var childR = (binaryNodeL.RightFrame != null && binaryNodeL.RightFrame.Node != null)
+                                     ? binaryNodeL.RightFrame.Node.Length.CurrentValue
+                                     : (binaryNodeL.RightFrame != null ? binaryNodeL.RightFrame.Length : 32f);
+                        rect.anchoredPosition = new Vector2((childR - childL) / 2 + 1, 0);
+                    }
+                    break;
+                case Direction.Right:
+                    if (Node.TryGetComponent<VariableNode>(out var varNode))
+                        rect.anchoredPosition = new Vector2(-1, 0);
+                    else if (Node.TryGetComponent<UnaryNode>(out var unaryNode))
+                        rect.anchoredPosition = new Vector2(-Node.Length.CurrentValue / 2 + 4, 0);
+                    else if (Node.TryGetComponent<BinaryNode>(out var binaryNode))
+                    {
+                        var childL = (binaryNode.LeftFrame != null && binaryNode.LeftFrame.Node != null)
+                                     ? binaryNode.LeftFrame.Node.Length.CurrentValue
+                                     : (binaryNode.LeftFrame != null ? binaryNode.LeftFrame.Length : 32f);
+                        var childR = (binaryNode.RightFrame != null && binaryNode.RightFrame.Node != null)
+                                     ? binaryNode.RightFrame.Node.Length.CurrentValue
+                                     : (binaryNode.RightFrame != null ? binaryNode.RightFrame.Length : 32f);
+                        rect.anchoredPosition = new Vector2((childL - childR) / 2 - 1, 0);
+                    }
+                    break;
+            }
+        }
+        filled = true;
+    }
 }
 
 public enum Direction
