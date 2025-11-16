@@ -150,19 +150,102 @@ public class SequentNode : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndD
 
     /// <summary>
     /// SequentNode の複製を作成し、マウス位置に配置する。
+    /// 複製元のノード構造を解析してSequentを取得し、そこから新しいノードを生成する。
     /// </summary>
     private SequentNode DuplicateSequentNodeAtPosition(PointerEventData eventData)
     {
-        SequentNode duplicated = Instantiate(gameObject).GetComponent<SequentNode>();
-        if (duplicated == null) return null;
+        Debug.Log("[DuplicateSequentNodeAtPosition] Starting duplication by analyzing source structure");
+        
+        // ステップ 1: 複製元から Sequent を取得
+        if (!TryGenerateSequentFromFrames(out var sourceSequent))
+        {
+            Debug.LogError("[DuplicateSequentNodeAtPosition] Failed to generate Sequent from source frames");
+            return null;
+        }
+        
+        Debug.Log($"[DuplicateSequentNodeAtPosition] Source Sequent: Antecedents={sourceSequent.Antecedents.Count}, Consequents={sourceSequent.Consequents.Count}");
 
-        // Canvas に配置
+        // ステップ 2: このノード（プレハブ参照）を複製してから中身をクリア
+        var duplicated = Instantiate(gameObject, CanvasRect.Main).GetComponent<SequentNode>();
+        if (duplicated == null)
+        {
+            Debug.LogError("[DuplicateSequentNodeAtPosition] Failed to instantiate and get SequentNode");
+            return null;
+        }
+
+        Debug.Log("[DuplicateSequentNodeAtPosition] Base prefab instantiated");
+
+        // ステップ 3: 複製されたノードのフレームをすべてクリア
+        duplicated.RightFrames.Clear();
+        duplicated.LeftFrames.Clear();
+
+        // 既存のフレームゲームオブジェクトを削除
+        for (int i = duplicated.transform.childCount - 1; i >= 0; i--)
+        {
+            var child = duplicated.transform.GetChild(i);
+            var frame = child.GetComponent<Frame>();
+            if (frame != null)
+            {
+                Destroy(child.gameObject);
+            }
+        }
+
+        Debug.Log("[DuplicateSequentNodeAtPosition] Cleared existing frames");
+
+        // ステップ 4: NodeCreator を使ってフレームとノードを生成
+        // Antecedents（左側）
+        for (int i = 0; i < sourceSequent.Antecedents.Count; i++)
+        {
+            duplicated.AddLeftFrame();
+            var frame = duplicated.LeftFrames[duplicated.LeftFrames.Count - 1];
+            if (frame == null)
+            {
+                Debug.LogError($"[DuplicateSequentNodeAtPosition] Failed to add left frame {i}");
+                Destroy(duplicated.gameObject);
+                return null;
+            }
+
+            Debug.Log($"[DuplicateSequentNodeAtPosition] Creating node from formula: {sourceSequent.Antecedents[i]}");
+            var node = NodeCreator.CreateNodeFromFormula(sourceSequent.Antecedents[i], frame.RectTransform);
+            if (node == null)
+            {
+                Debug.LogError($"[DuplicateSequentNodeAtPosition] Failed to create node for antecedent {i}");
+                Destroy(duplicated.gameObject);
+                return null;
+            }
+
+            frame.SetNodeDirect(node);
+        }
+
+        // Consequents（右側）
+        for (int i = 0; i < sourceSequent.Consequents.Count; i++)
+        {
+            duplicated.AddRightFrame();
+            var frame = duplicated.RightFrames[duplicated.RightFrames.Count - 1];
+            if (frame == null)
+            {
+                Debug.LogError($"[DuplicateSequentNodeAtPosition] Failed to add right frame {i}");
+                Destroy(duplicated.gameObject);
+                return null;
+            }
+
+            Debug.Log($"[DuplicateSequentNodeAtPosition] Creating node from formula: {sourceSequent.Consequents[i]}");
+            var node = NodeCreator.CreateNodeFromFormula(sourceSequent.Consequents[i], frame.RectTransform);
+            if (node == null)
+            {
+                Debug.LogError($"[DuplicateSequentNodeAtPosition] Failed to create node for consequent {i}");
+                Destroy(duplicated.gameObject);
+                return null;
+            }
+
+            frame.SetNodeDirect(node);
+        }
+
+        // ステップ 5: マウス位置に配置
         var duplicatedRT = duplicated.GetComponent<RectTransform>();
-        duplicatedRT.SetParent(CanvasRect.Main, false);
         duplicatedRT.anchorMin = new Vector2(0.5f, 0.5f);
         duplicatedRT.anchorMax = new Vector2(0.5f, 0.5f);
         
-        // マウス位置をCanvas座標に変換
         var canvasRect = CanvasRect.Main;
         Vector2 localPoint;
         if (RectTransformUtility.ScreenPointToLocalPointInRectangle(canvasRect, eventData.position, eventData.pressEventCamera, out localPoint))
@@ -174,7 +257,18 @@ public class SequentNode : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndD
             duplicatedRT.position = eventData.position;
         }
 
-        Debug.Log("[SequentNode.DuplicateSequentNodeAtPosition] Duplicated SequentNode created at mouse position");
+        Debug.Log($"[DuplicateSequentNodeAtPosition] Duplication complete at position {duplicatedRT.anchoredPosition}");
+        
+        // ステップ 6: Sequent を生成して確認
+        if (duplicated.TryGenerateSequentFromFrames(out var duplicatedSequent))
+        {
+            Debug.Log($"[DuplicateSequentNodeAtPosition] Duplicated Sequent verified: Antecedents={duplicatedSequent.Antecedents.Count}, Consequents={duplicatedSequent.Consequents.Count}");
+        }
+        else
+        {
+            Debug.LogWarning("[DuplicateSequentNodeAtPosition] Failed to verify duplicated Sequent");
+        }
+        
         return duplicated;
     }
 
@@ -184,34 +278,113 @@ public class SequentNode : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndD
 
     void Update()
     {
+        // ボタン位置を常に再計算
+        RecalculateRightButtonPositions();
+        RecalculateLeftButtonPositions();
+
         bool needRight = false;
-        if (rightLastWidths.Count != RightFrames.Count) needRight = true; else
+        if (rightLastWidths.Count != RightFrames.Count) 
+        {
+            Debug.Log($"[Update] RightFrames count changed: {rightLastWidths.Count} -> {RightFrames.Count}");
+            needRight = true;
+        }
+        else
         {
             for (int i = 0; i < RightFrames.Count; i++)
             {
                 var f = RightFrames[i];
                 if (f == null || f.RectTransform == null) { needRight = true; break; }
                 var w = f.RectTransform.sizeDelta.x;
-                if (!Mathf.Approximately(w, rightLastWidths[i])) { needRight = true; break; }
+                if (!Mathf.Approximately(w, rightLastWidths[i])) 
+                { 
+                    Debug.Log($"[Update] RightFrame {i} width changed: {rightLastWidths[i]} -> {w}");
+                    needRight = true; 
+                    break; 
+                }
             }
         }
         if (needRight) RecalculateRightPositions();
 
         bool needLeft = false;
-        if (leftLastWidths.Count != LeftFrames.Count) needLeft = true; else
+        if (leftLastWidths.Count != LeftFrames.Count) 
+        {
+            Debug.Log($"[Update] LeftFrames count changed: {leftLastWidths.Count} -> {LeftFrames.Count}");
+            needLeft = true;
+        }
+        else
         {
             for (int i = 0; i < LeftFrames.Count; i++)
             {
                 var f = LeftFrames[i];
                 if (f == null || f.RectTransform == null) { needLeft = true; break; }
                 var w = f.RectTransform.sizeDelta.x;
-                if (!Mathf.Approximately(w, leftLastWidths[i])) { needLeft = true; break; }
+                if (!Mathf.Approximately(w, leftLastWidths[i])) 
+                { 
+                    Debug.Log($"[Update] LeftFrame {i} width changed: {leftLastWidths[i]} -> {w}");
+                    needLeft = true; 
+                    break; 
+                }
             }
         }
         if (needLeft) RecalculateLeftPositions();
 
         // すべてのフレームが埋まり、各ノードのFormulaが妥当なら Sequent を生成
         TryGenerateSequentFromFrames(out _);
+    }
+
+    /// <summary>
+    /// 右側ボタン位置を再計算して更新する。
+    /// </summary>
+    private void RecalculateRightButtonPositions()
+    {
+        // 末端フレームに続けてボタン位置を配置
+        if (RightFrames.Count > 0)
+        {
+            // フレームの Width の総和を計算
+            float totalWidth = 0f;
+            for (int i = 0; i < RightFrames.Count; i++)
+            {
+                float frameWidth = RightFrames[i].RectTransform.sizeDelta.x;
+                totalWidth += frameWidth;
+            }
+            
+            Vector2 basePos = new Vector2(7f + totalWidth, 0f);
+            rightUpButton.anchoredPosition = basePos;
+            rightDownButton.anchoredPosition = basePos;
+        }
+        else
+        {
+            // フレームが無い場合は初期位置付近に配置
+            rightUpButton.anchoredPosition = new Vector2(7f, 0f);
+            rightDownButton.anchoredPosition = new Vector2(7f, 0f);
+        }
+    }
+
+    /// <summary>
+    /// 左側ボタン位置を再計算して更新する。
+    /// </summary>
+    private void RecalculateLeftButtonPositions()
+    {
+        // 末端（最も左側）フレームのさらに左へボタン配置
+        if (LeftFrames.Count > 0)
+        {
+            // フレームの Width の総和を計算
+            float totalWidth = 0f;
+            for (int i = 0; i < LeftFrames.Count; i++)
+            {
+                float frameWidth = LeftFrames[i].RectTransform.sizeDelta.x;
+                totalWidth += frameWidth;
+            }
+            
+            Vector2 basePos = new Vector2(-7f - totalWidth, 0f);
+            leftUpButton.anchoredPosition = basePos;
+            leftDownButton.anchoredPosition = basePos;
+        }
+        else
+        {
+            leftUpButton.anchoredPosition = new Vector2(-7f, 0f);
+            leftDownButton.anchoredPosition = new Vector2(-7f, 0f);
+        }
     }
 
     private void RecalculateRightPositions()
@@ -237,24 +410,6 @@ public class SequentNode : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndD
                 }
             }
             rightLastWidths.Add(rt.sizeDelta.x);
-        }
-
-        // 末端フレームに続けてボタン位置を再配置
-        if (RightFrames.Count > 0)
-        {
-            var last = RightFrames[RightFrames.Count - 1];
-            if (last != null && last.RectTransform != null)
-            {
-                Vector2 basePos = last.RectTransform.anchoredPosition + new Vector2(last.Length, 0f); // Frame.Length を使用
-                if (rightUpButton != null) rightUpButton.anchoredPosition = basePos;
-                if (rightDownButton != null) rightDownButton.anchoredPosition = basePos;
-            }
-        }
-        else
-        {
-            // フレームが無い場合は初期位置付近に配置
-            if (rightUpButton != null) rightUpButton.anchoredPosition = new Vector2(7f, 0f);
-            if (rightDownButton != null) rightDownButton.anchoredPosition = new Vector2(7f, 0f);
         }
     }
 
@@ -386,38 +541,27 @@ public class SequentNode : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndD
             }
             leftLastWidths.Add(lrt.sizeDelta.x);
         }
-
-        // 末端（最も左側）フレームのさらに左へボタン配置
-        if (LeftFrames.Count > 0)
-        {
-            var last = LeftFrames[LeftFrames.Count - 1];
-            if (last != null && last.RectTransform != null)
-            {
-                Vector2 basePos = last.RectTransform.anchoredPosition - new Vector2(last.Length, 0f); // Frame.Length を使用
-                if (leftUpButton != null) leftUpButton.anchoredPosition = basePos;
-                if (leftDownButton != null) leftDownButton.anchoredPosition = basePos;
-            }
-        }
-        else
-        {
-            if (leftUpButton != null) leftUpButton.anchoredPosition = new Vector2(-7f, 0f);
-            if (leftDownButton != null) leftDownButton.anchoredPosition = new Vector2(-7f, 0f);
-        }
     }
 
     // 右側フレームを1つ追加
     public void AddRightFrame()
     {
-        if (rightframePrefab == null) return;
+        if (rightframePrefab == null) 
+        {
+            Debug.LogError("[SequentNode.AddRightFrame] rightframePrefab is null");
+            return;
+        }
         // 配置コンテナは up ボタンの親を仮定（必要なら別シリアライズ参照に変更）
         Transform parentContainer = rightUpButton != null ? rightUpButton.parent : this.transform;
         var go = Instantiate(rightframePrefab, parentContainer);
         var frame = go.GetComponent<Frame>();
         if (frame == null)
         {
+            Debug.LogError("[SequentNode.AddRightFrame] Frame component not found on instantiated prefab");
             Destroy(go);
             return;
         }
+        Debug.Log("[SequentNode.AddRightFrame] RightFrame added: " + go.name);
         RightFrames.Add(frame);
         RecalculateRightPositions();
     }
@@ -435,15 +579,21 @@ public class SequentNode : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndD
     // 左側フレームを1つ追加
     public void AddLeftFrame()
     {
-        if (leftframePrefab == null) return;
+        if (leftframePrefab == null) 
+        {
+            Debug.LogError("[SequentNode.AddLeftFrame] leftframePrefab is null");
+            return;
+        }
         Transform parentContainer = leftUpButton != null ? leftUpButton.parent : this.transform;
         var go = Instantiate(leftframePrefab, parentContainer);
         var frame = go.GetComponent<Frame>();
         if (frame == null)
         {
+            Debug.LogError("[SequentNode.AddLeftFrame] Frame component not found on instantiated prefab");
             Destroy(go);
             return;
         }
+        Debug.Log("[SequentNode.AddLeftFrame] LeftFrame added: " + go.name);
         LeftFrames.Add(frame);
         RecalculateLeftPositions();
     }

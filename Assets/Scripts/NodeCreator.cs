@@ -286,7 +286,7 @@ public class NodeCreator : MonoBehaviour
         Debug.Log("[NodeCreator] CreateSequentNode start: Antecedents=" + sequent.Antecedents.Count + ", Consequents=" + sequent.Consequents.Count);
         var inst = Object.Instantiate(sequentPrefab, parent);
 
-        // Antecedents
+        // Antecedents（左側）
         for (int i = 0; i < sequent.Antecedents.Count; i++)
         {
             Debug.Log("[NodeCreator] Adding left frame " + i);
@@ -296,6 +296,11 @@ public class NodeCreator : MonoBehaviour
             if (frame == null)
             {
                 Debug.LogError("[NodeCreator] Frame is null after AddLeftFrame");
+                continue;
+            }
+            if (frame.RectTransform == null)
+            {
+                Debug.LogError("[NodeCreator] Frame.RectTransform is null");
                 continue;
             }
             Debug.Log("[NodeCreator] Creating node from formula: " + sequent.Antecedents[i]);
@@ -308,7 +313,7 @@ public class NodeCreator : MonoBehaviour
             Debug.Log("[NodeCreator] Setting node direct to frame");
             frame.SetNodeDirect(node);
         }
-        // Consequents
+        // Consequents（右側）
         for (int i = 0; i < sequent.Consequents.Count; i++)
         {
             Debug.Log("[NodeCreator] Adding right frame " + i);
@@ -318,6 +323,11 @@ public class NodeCreator : MonoBehaviour
             if (frame == null)
             {
                 Debug.LogError("[NodeCreator] Frame is null after AddRightFrame");
+                continue;
+            }
+            if (frame.RectTransform == null)
+            {
+                Debug.LogError("[NodeCreator] Frame.RectTransform is null");
                 continue;
             }
             Debug.Log("[NodeCreator] Creating node from formula: " + sequent.Consequents[i]);
@@ -330,7 +340,7 @@ public class NodeCreator : MonoBehaviour
             Debug.Log("[NodeCreator] Setting node direct to frame");
             frame.SetNodeDirect(node);
         }
-        // 内部 Sequent プロパティ更新（TryGenerateSequent が自動で拾う想定だが明示的にも）
+        // 内部 Sequent プロパティ更新
         Debug.Log("[NodeCreator] Calling TryGenerateSequentFromFrames");
         inst.TryGenerateSequentFromFrames(out _);
         Debug.Log("[NodeCreator] CreateSequentNode complete");

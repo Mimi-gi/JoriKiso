@@ -52,7 +52,8 @@ public class InferenceSuggestionPanel : MonoBehaviour
 
     /// <summary>
     /// 指定された InferenceBar をもとに内容を更新する。
-    /// いまは雛形としてクリア＋ログのみ。後で ②③ のロジックをここに追加する。
+    /// isStart=true の場合は A ⊢ A をサジェストする。
+    /// それ以外の場合、前提+ルール → 結論、または前提+結論 → ルールをサジェストする。
     /// </summary>
     public void RefreshFor(InferenceBar bar)
     {
@@ -70,11 +71,65 @@ public class InferenceSuggestionPanel : MonoBehaviour
             return;
         }
 
+        // スタートバーの場合：A ⊢ A をサジェスト
+        if (bar.isStart)
+        {
+            TryShowStartBarSuggestion(bar);
+            return;
+        }
+
         // ②: 前提 + ルールノード が埋まっている場合、結論候補 SequentNode を列挙
         TryShowConclusionsFromPremisesAndRule(bar);
 
         // ③: 前提 + 結論シーケント が埋まっている場合、適用可能ルール候補 RuleNode を列挙
         TryShowRulesFromPremisesAndConclusion(bar);
+    }
+
+    /// <summary>
+    /// スタートバーの場合、A ⊢ A の形式のシーケントをサジェストする。
+    /// A は任意の原子式なので、サジェストとしていくつかの例を表示する。
+    /// </summary>
+    private void TryShowStartBarSuggestion(InferenceBar bar)
+    {
+        if (sequentNodePrefab == null)
+        {
+            Debug.Log("[InferenceSuggestionPanel] sequentNodePrefab is not assigned. Skip start bar suggestion.");
+            return;
+        }
+
+        Debug.Log("[InferenceSuggestionPanel] Showing start bar suggestion: A ⊢ A");
+
+        // スタートバー用のサジェスト：A, B, C の単純な変数で A ⊢ A を作成
+        var suggestions = new List<(string label, Formula formula)>
+        {
+            ("A ⊢ A", new Variable(Alphabet.A)),
+            ("B ⊢ B", new Variable(Alphabet.B)),
+            ("C ⊢ C", new Variable(Alphabet.C)),
+        };
+
+        int created = 0;
+        foreach (var (label, formula) in suggestions)
+        {
+            // A ⊢ A の形式でシーケントを作成
+            var sequent = new Sequent(
+                new Formulas(new List<Formula> { formula }),
+                new Formulas(new List<Formula> { formula })
+            );
+
+            Debug.Log($"[InferenceSuggestionPanel] Creating SequentNode for start bar suggestion: {label}");
+            var node = NodeCreator.CreateSequentNode(sequent, sequentNodePrefab, content);
+            if (node == null)
+            {
+                Debug.LogWarning($"[InferenceSuggestionPanel] Failed to create SequentNode for {label}");
+                continue;
+            }
+
+            PreparePreviewSequentNode(node);
+            created++;
+        }
+
+        Debug.Log($"[InferenceSuggestionPanel] Total start bar suggestions created: {created}");
+        AdjustContentHeight(created);
     }
 
     /// <summary>
