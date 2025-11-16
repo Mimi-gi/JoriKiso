@@ -20,8 +20,13 @@ public class SequentNode : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndD
     [SerializeField] GameObject rightframePrefab;
 
     private RectTransform rt;
+    private SequentNode draggedNode = null;
 
     public Sequent Sequent { get; private set; }
+    
+    // 推論チェーン構築用：前後の InferenceBar を記録
+    public InferenceBar PreviousInferenceBar { get; set; }
+    public InferenceBar NextInferenceBar { get; set; }
 
     void Awake()
     {
@@ -39,27 +44,138 @@ public class SequentNode : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndD
     // SequentNode 自体のドラッグハンドラ（ボタン等は固定）
     public void OnBeginDrag(PointerEventData eventData)
     {
-        // 必要ならドラッグ開始時の処理を追加
+        Debug.Log("SequentNode Begin Drag - Creating duplicate");
+        
+        // InferenceSuggestionPanel の content 内にあるかチェック
+        if (InferenceSuggestionPanel.Instance != null)
+        {
+            var nodeRect = GetComponent<RectTransform>();
+            if (InferenceSuggestionPanel.Instance.IsNodeInContent(nodeRect))
+            {
+                Debug.Log("SequentNode is in InferenceSuggestionPanel content - creating duplicate");
+                
+                // 複製を作成し、マウス位置に配置
+                draggedNode = DuplicateSequentNodeAtPosition(eventData);
+                if (draggedNode != null)
+                {
+                    // Pointer に複製を登録
+                    if (Pointer.Instance != null)
+                    {
+                        Pointer.Instance.Register(draggedNode);
+                    }
+                    Debug.Log("Duplicate SequentNode created and registered to Pointer");
+                }
+                return;
+            }
+        }
+        
+        // 通常のドラッグの場合（複製ではない）
+        draggedNode = this;
+        if (Pointer.Instance != null)
+        {
+            Pointer.Instance.Register(this);
+        }
     }
 
     public void OnDrag(PointerEventData eventData)
     {
-        if (rt == null) return;
-        var parentRT = rt.parent as RectTransform;
-        Vector2 localPoint;
-        if (parentRT != null && RectTransformUtility.ScreenPointToLocalPointInRectangle(parentRT, eventData.position, eventData.pressEventCamera, out localPoint))
+        // ドラッグ対象を取得
+        SequentNode targetNode = draggedNode != null ? draggedNode : this;
+        RectTransform targetRT = targetNode.GetComponent<RectTransform>();
+        
+        if (targetRT == null) return;
+
+        // draggedNode（複製）の場合、Canvas座標で計算
+        if (draggedNode != null && draggedNode == targetNode)
         {
-            rt.anchoredPosition = localPoint;
+            var canvasRect = CanvasRect.Main;
+            Vector2 localPoint;
+            if (RectTransformUtility.ScreenPointToLocalPointInRectangle(canvasRect, eventData.position, eventData.pressEventCamera, out localPoint))
+            {
+                targetRT.anchoredPosition = localPoint;
+            }
+            else
+            {
+                targetRT.position = eventData.position;
+            }
+            return;
+        }
+
+        // 通常のドラッグの場合
+        var parentRT = targetRT.parent as RectTransform;
+        Vector2 localPoint2;
+        if (parentRT != null && RectTransformUtility.ScreenPointToLocalPointInRectangle(parentRT, eventData.position, eventData.pressEventCamera, out localPoint2))
+        {
+            targetRT.anchoredPosition = localPoint2;
         }
         else
         {
-            rt.position = eventData.position;
+            targetRT.position = eventData.position;
         }
     }
 
     public void OnEndDrag(PointerEventData eventData)
     {
-        // 必要ならドラッグ終了時の処理を追加
+        Debug.Log("SequentNode End Drag");
+        
+        if (draggedNode != null && draggedNode != this)
+        {
+            draggedNode = null;
+        }
+        else if (Pointer.Instance != null)
+        {
+            Pointer.Instance.Unregister();
+        }
+    }
+
+    /// <summary>
+    /// SequentNode の複製を作成する。
+    /// Instantiate でクローンを作成し、Canvas に配置する。
+    /// </summary>
+    private SequentNode DuplicateSequentNode()
+    {
+        SequentNode duplicated = Instantiate(gameObject).GetComponent<SequentNode>();
+        if (duplicated == null) return null;
+
+        // Canvas に配置
+        var duplicatedRT = duplicated.GetComponent<RectTransform>();
+        var originalRT = GetComponent<RectTransform>();
+        
+        duplicatedRT.SetParent(CanvasRect.Main, false);
+        duplicatedRT.anchoredPosition = originalRT.anchoredPosition;
+
+        Debug.Log("[SequentNode.DuplicateSequentNode] Duplicated SequentNode created");
+        return duplicated;
+    }
+
+    /// <summary>
+    /// SequentNode の複製を作成し、マウス位置に配置する。
+    /// </summary>
+    private SequentNode DuplicateSequentNodeAtPosition(PointerEventData eventData)
+    {
+        SequentNode duplicated = Instantiate(gameObject).GetComponent<SequentNode>();
+        if (duplicated == null) return null;
+
+        // Canvas に配置
+        var duplicatedRT = duplicated.GetComponent<RectTransform>();
+        duplicatedRT.SetParent(CanvasRect.Main, false);
+        duplicatedRT.anchorMin = new Vector2(0.5f, 0.5f);
+        duplicatedRT.anchorMax = new Vector2(0.5f, 0.5f);
+        
+        // マウス位置をCanvas座標に変換
+        var canvasRect = CanvasRect.Main;
+        Vector2 localPoint;
+        if (RectTransformUtility.ScreenPointToLocalPointInRectangle(canvasRect, eventData.position, eventData.pressEventCamera, out localPoint))
+        {
+            duplicatedRT.anchoredPosition = localPoint;
+        }
+        else
+        {
+            duplicatedRT.position = eventData.position;
+        }
+
+        Debug.Log("[SequentNode.DuplicateSequentNodeAtPosition] Duplicated SequentNode created at mouse position");
+        return duplicated;
     }
 
     // RectTransform の横幅(sizeDelta.x)をキャッシュして変化を検出
@@ -116,7 +232,7 @@ public class SequentNode : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndD
                 if (prev != null && prev.RectTransform != null)
                 {
                     var prevRT = prev.RectTransform;
-                    float offsetX = prevRT.sizeDelta.x; // 直前フレームの幅分だけずらす
+                    float offsetX = prev.Length; // Frame.Length を使用
                     rt.anchoredPosition = prevRT.anchoredPosition + new Vector2(offsetX, 0f);
                 }
             }
@@ -129,10 +245,9 @@ public class SequentNode : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndD
             var last = RightFrames[RightFrames.Count - 1];
             if (last != null && last.RectTransform != null)
             {
-                var lastRT = last.RectTransform;
-                Vector2 basePos = lastRT.anchoredPosition + new Vector2(lastRT.sizeDelta.x, 0f);
+                Vector2 basePos = last.RectTransform.anchoredPosition + new Vector2(last.Length, 0f); // Frame.Length を使用
                 if (rightUpButton != null) rightUpButton.anchoredPosition = basePos;
-                if (rightDownButton != null) rightDownButton.anchoredPosition = basePos; // 下に少しずらす例（必要なら調整）
+                if (rightDownButton != null) rightDownButton.anchoredPosition = basePos;
             }
         }
         else
@@ -144,30 +259,46 @@ public class SequentNode : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndD
     }
 
     // 現在の Left/RightFrames から Sequent 生成を試みる
-    // - すべてのフレームが埋まっており、各ノードの Formula が null でない場合に生成
+    // - Filled なフレームから得られる Formula だけを集めて生成
+    // - 片側が空でも（もう一方に式があれば）生成を試みる
     // - 成功時は this.Sequent を更新し true を返す
     public bool TryGenerateSequentFromFrames(out Sequent result)
     {
         result = default;
         if (LeftFrames == null || RightFrames == null) return false;
-
         var left = new List<Formula>();
         var right = new List<Formula>();
 
-        // 左側収集
+        // 左側収集: Filled なフレームだけを式として採用し、それ以外はスキップ
         for (int i = 0; i < LeftFrames.Count; i++)
         {
             var frame = LeftFrames[i];
-            if (!TryGetFormulaFromFrame(frame, out var formula)) return false;
-            left.Add(formula);
+            if (TryGetFormulaFromFrame(frame, out var formula))
+            {
+                left.Add(formula);
+            }
+            else
+            {
+            }
         }
 
-        // 右側収集
+        // 右側収集: 同様に、取れる式だけを集める
         for (int i = 0; i < RightFrames.Count; i++)
         {
             var frame = RightFrames[i];
-            if (!TryGetFormulaFromFrame(frame, out var formula)) return false;
-            right.Add(formula);
+            if (TryGetFormulaFromFrame(frame, out var formula))
+            {
+                right.Add(formula);
+            }
+            else
+            {
+            }
+        }
+
+        // 左右どちらにも式が 1 つも無い場合は Sequent を生成しない
+        if (left.Count == 0 && right.Count == 0)
+        {
+            return false;
         }
 
         if (TryCreateSequent(left, right, out var seq))
@@ -214,35 +345,21 @@ public class SequentNode : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndD
         return true;
     }
 
-    // Sequent の生成（2引数コンストラクタのみをリフレクションで探索）
+    // Sequent の生成（Formulas に包んでそのままコンストラクタ呼び出し）
     private bool TryCreateSequent(List<Formula> left, List<Formula> right, out Sequent sequent)
     {
-        sequent = default;
         try
         {
-            var st = typeof(Sequent);
-
-            // 2引数コンストラクタのみ採用（List/Enumerable 等に対応）
-            foreach (var ctor in st.GetConstructors())
-            {
-                var ps = ctor.GetParameters();
-                if (ps.Length != 2) continue;
-
-                bool p0ok = ps[0].ParameterType.IsInstanceOfType(left) || ps[0].ParameterType.IsAssignableFrom(typeof(List<Formula>)) || ps[0].ParameterType.IsAssignableFrom(typeof(IEnumerable<Formula>));
-                bool p1ok = ps[1].ParameterType.IsInstanceOfType(right) || ps[1].ParameterType.IsAssignableFrom(typeof(List<Formula>)) || ps[1].ParameterType.IsAssignableFrom(typeof(IEnumerable<Formula>));
-                if (p0ok && p1ok)
-                {
-                    var obj = ctor.Invoke(new object[] { left, right });
-                    sequent = (Sequent)obj;
-                    return true;
-                }
-            }
+            var antecedents = new Formulas(left);
+            var consequents = new Formulas(right);
+            sequent = new Sequent(antecedents, consequents);
+            return true;
         }
         catch
         {
-            // 生成失敗時は false
+            sequent = default;
+            return false;
         }
-        return false;
     }
 
     private void RecalculateLeftPositions()
@@ -262,10 +379,9 @@ public class SequentNode : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndD
                 var prev = LeftFrames[i - 1];
                 if (prev != null && prev.RectTransform != null)
                 {
-                    var prevRT = prev.RectTransform;
-                    float offsetX = prevRT.sizeDelta.x;
+                    float offsetX = prev.Length; // Frame.Length を使用
                     // 左方向へ伸ばす: 前フレームの位置から幅分マイナス
-                    lrt.anchoredPosition = prevRT.anchoredPosition - new Vector2(offsetX, 0f);
+                    lrt.anchoredPosition = prev.RectTransform.anchoredPosition - new Vector2(offsetX, 0f);
                 }
             }
             leftLastWidths.Add(lrt.sizeDelta.x);
@@ -277,10 +393,9 @@ public class SequentNode : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndD
             var last = LeftFrames[LeftFrames.Count - 1];
             if (last != null && last.RectTransform != null)
             {
-                var lastRT = last.RectTransform;
-                Vector2 basePos = lastRT.anchoredPosition - new Vector2(lastRT.sizeDelta.x, 0f);
+                Vector2 basePos = last.RectTransform.anchoredPosition - new Vector2(last.Length, 0f); // Frame.Length を使用
                 if (leftUpButton != null) leftUpButton.anchoredPosition = basePos;
-                if (leftDownButton != null) leftDownButton.anchoredPosition = basePos; // y は 0 維持
+                if (leftDownButton != null) leftDownButton.anchoredPosition = basePos;
             }
         }
         else

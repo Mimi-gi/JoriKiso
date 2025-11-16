@@ -16,13 +16,43 @@ public class Frame : MonoBehaviour, IDropHandler
     public float Length { get; private set; } = 32f;
     public RectTransform RectTransform { get { return rectTransform; } }
 
+    private float lastNodeLength = -1f;
+
+    void Update()
+    {
+        // 子ノードがある場合、そのLengthを監視して フレーム幅を更新
+        if (Node != null)
+        {
+            float currentNodeLength = Node.Length.CurrentValue;
+            // ノードの Length が変わったら、フレーム幅を更新
+            if (!Mathf.Approximately(currentNodeLength, lastNodeLength))
+            {
+                lastNodeLength = currentNodeLength;
+                rectTransform.sizeDelta = new Vector2(currentNodeLength + 2, 32);
+                Length = currentNodeLength + 2;
+                Debug.Log($"[Frame.Update] Updated frame width to {rectTransform.sizeDelta.x} (node length: {currentNodeLength})");
+            }
+        }
+        
+        // ノードが外された場合の検出
+        if (Node != null && Node.GetComponent<RectTransform>().parent != rectTransform)
+        {
+            Debug.Log("[Frame.Update] Node was removed from this frame");
+            Node = null;
+            filled = false;
+            rectTransform.sizeDelta = new Vector2(32f, 32);
+            Length = 32f;
+            lastNodeLength = -1f;
+        }
+    }
+
 
     public void OnDrop(PointerEventData eventData)
     {
         if (Node != null)
         {
-            Debug.Log("Frame is already filled");
-            //return;
+            Debug.Log("Frame is already filled - cannot drop new node");
+            return;
         }
         if (Pointer.Instance.Node != null)
         {
@@ -103,16 +133,24 @@ public class Frame : MonoBehaviour, IDropHandler
         var rect = Node.GetComponent<RectTransform>();
         if (rect != null)
         {
-            rectTransform.sizeDelta = new Vector2(Node.Length.CurrentValue + 2, 32);
-            Length = Node.Length.CurrentValue + 2;
+            // ノードの Length を取得（ReactiveProperty なので .CurrentValue）
+            float nodeLength = node.Length.CurrentValue;
+            Debug.Log($"[Frame.SetNodeDirect] Node length: {nodeLength}");
+            
+            // フレームサイズ更新
+            rectTransform.sizeDelta = new Vector2(nodeLength + 2, 32);
+            Length = nodeLength + 2;
+            Debug.Log($"[Frame.SetNodeDirect] Frame sizeDelta set to: {rectTransform.sizeDelta}");
+            
             rect.SetParent(rectTransform);
+            
             switch (direction)
             {
                 case Direction.Left:
                     if (Node.TryGetComponent<VariableNode>(out var varNodeL))
                         rect.anchoredPosition = new Vector2(1, 0);
                     else if (Node.TryGetComponent<UnaryNode>(out var unaryNodeL))
-                        rect.anchoredPosition = new Vector2(-Node.Length.CurrentValue / 2 + 6, 0);
+                        rect.anchoredPosition = new Vector2(-nodeLength / 2 + 6, 0);
                     else if (Node.TryGetComponent<BinaryNode>(out var binaryNodeL))
                     {
                         var childL = (binaryNodeL.LeftFrame != null && binaryNodeL.LeftFrame.Node != null)
@@ -128,7 +166,7 @@ public class Frame : MonoBehaviour, IDropHandler
                     if (Node.TryGetComponent<VariableNode>(out var varNode))
                         rect.anchoredPosition = new Vector2(-1, 0);
                     else if (Node.TryGetComponent<UnaryNode>(out var unaryNode))
-                        rect.anchoredPosition = new Vector2(-Node.Length.CurrentValue / 2 + 4, 0);
+                        rect.anchoredPosition = new Vector2(-nodeLength / 2 + 4, 0);
                     else if (Node.TryGetComponent<BinaryNode>(out var binaryNode))
                     {
                         var childL = (binaryNode.LeftFrame != null && binaryNode.LeftFrame.Node != null)
@@ -143,6 +181,10 @@ public class Frame : MonoBehaviour, IDropHandler
             }
         }
         filled = true;
+        
+        // 初期値を設定して Update で監視開始
+        lastNodeLength = node.Length.CurrentValue;
+        Debug.Log("[Frame.SetNodeDirect] Node set, Update will monitor length");
     }
 }
 

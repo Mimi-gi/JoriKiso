@@ -6,9 +6,10 @@ using UnityEngine.UI;
 // 端をドラッグして横方向に伸縮可能であることを表すマーカーインターフェース
 public interface IExpandable { }
 
-public class InferenceBar : MonoBehaviour, IExpandable, IBeginDragHandler, IDragHandler, IEndDragHandler
+public class InferenceBar : MonoBehaviour, IExpandable, IBeginDragHandler, IDragHandler, IEndDragHandler, IPointerClickHandler
 {
     [SerializeField] GameObject PortPrefab;
+    [SerializeField] RulePatch rulePatch;
     [SerializeField] float minWidth = 50f;
     [SerializeField] float maxWidth = 1000f;
     [SerializeField] float portVerticalOffset = 30f;   // バーからポートまでの縦方向オフセット
@@ -22,11 +23,27 @@ public class InferenceBar : MonoBehaviour, IExpandable, IBeginDragHandler, IDrag
     
     public List<Port> PremisesPorts = new List<Port>();
     public Port ConclusionPort;
+    public bool isStart=false;
 
     void Awake()
     {
         rectTransform = GetComponent<RectTransform>();
         RefreshPorts();
+    }
+
+    // クリックされたときに Pointer に「最後に触った InferenceBar」として登録し、
+    // 推論サジェストパネルの内容もこのバーに基づいてリフレッシュする
+    public void OnPointerClick(PointerEventData eventData)
+    {
+        if (Pointer.Instance != null)
+        {
+            Pointer.Instance.RegisterInferenceBar(this);
+        }
+
+        if (InferenceSuggestionPanel.Instance != null)
+        {
+            InferenceSuggestionPanel.Instance.RefreshFor(this);
+        }
     }
 
     // 現在のバー幅に応じてポートを自動生成・整列する
@@ -37,11 +54,13 @@ public class InferenceBar : MonoBehaviour, IExpandable, IBeginDragHandler, IDrag
         float width = rectTransform.rect.width;
         if (width <= 0f) return;
 
-        // 配置可能な最大ポート数（左右少しマージンをとるなどの調整をしてもよい）
-        int maxPorts = Mathf.Max(1, Mathf.FloorToInt(width / minPortSpan));
-
-        // 結論ポート（中央1つ）を確保し、PremisesPorts は maxPorts-1 個までとする想定
-        int desiredPremiseCount = Mathf.Max(0, maxPorts - 1);
+        // isStart が true の場合、上側のポート（前提）は不要
+        int desiredPremiseCount = 0;
+        if (!isStart)
+        {
+            // 幅に応じて1個または2個に制限
+            desiredPremiseCount = width >= 60f ? 2 : 1;
+        }
 
         // PremisesPorts 数を desiredPremiseCount に揃える
         while (PremisesPorts.Count > desiredPremiseCount)
@@ -87,7 +106,12 @@ public class InferenceBar : MonoBehaviour, IExpandable, IBeginDragHandler, IDrag
 
             float offsetIndex = i - (desiredPremiseCount - 1) * 0.5f;
             float x = centerX + offsetIndex * span;
-            pr.SetParent(parent, false);
+            // すでにランタイムインスタンスの親が InferenceBar になっている前提のため、
+            // Prefab アセットに対して SetParent が呼ばれないようチェックする
+            if (pr.parent != parent)
+            {
+                pr.SetParent(parent, false);
+            }
             pr.anchoredPosition = new Vector2(x, barTopY);
         }
 
@@ -97,8 +121,11 @@ public class InferenceBar : MonoBehaviour, IExpandable, IBeginDragHandler, IDrag
             RectTransform cr = ConclusionPort.transform as RectTransform;
             if (cr != null)
             {
-                cr.SetParent(parent, false);
-                cr.anchoredPosition = new Vector2(centerX, barTopY);
+                if (cr.parent != parent)
+                {
+                    cr.SetParent(parent, false);
+                }
+                cr.anchoredPosition = new Vector2(centerX, -barTopY);
             }
         }
     }

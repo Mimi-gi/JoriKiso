@@ -9,7 +9,11 @@ public class BezierConnectionManager : MonoBehaviour
     public float lineWidth = 0.05f;
     public float controlOffset = 1.0f;
 
+    // 進行中の接続（ドラッグ中は1本のみを扱う）
     private BezieRenderer current;
+
+    // 確定済みの接続一覧（右クリック削除やポート破棄対応用）
+    private readonly System.Collections.Generic.List<BezieRenderer> finalized = new System.Collections.Generic.List<BezieRenderer>();
 
     void Awake()
     {
@@ -43,19 +47,52 @@ public class BezierConnectionManager : MonoBehaviour
             return;
         }
 
-        // 2回目クリック: 異なるポートなら確定／同じポートなら何もしない
+        // 2回目クリック: 異なるポートなら確定／同じポートならキャンセル
         if (current.IsDrawing && !current.IsFinalized)
         {
-            // 開始ポートと異なるポートがクリックされたときだけ確定する
-            if (Vector3.Distance(port.transform.position, GetStartPosition()) >= 0.0001f)
+            float dist = Vector3.Distance(port.transform.position, GetStartPosition());
+            Debug.Log($"[BezierConnectionManager] Second click. Port={port.name}, dist={dist}");
+
+            // ① 開始ポートと異なるポート: 接続確定
+            if (dist >= 0.0001f)
             {
                 Debug.Log("[BezierConnectionManager] Finalize curve with another port.");
+                // 接続確定
                 current.FinalizeCurve(port);
+
+                // 接続に関わるポートを取得
+                var startPort = GetPortFromBezier(current, true);
+                var endPort = port;
+
+                // InferenceBar 側のポートには ParentNode が無いので、
+                // 接続先（start / end）両方の Port に、相手側の SequentNode を親として紐付ける。
+                if (startPort != null && endPort != null)
+                {
+                    if (startPort.ParentNode == null && endPort.ParentNode != null)
+                    {
+                        startPort.SetParentNode(endPort.ParentNode);
+                    }
+                    else if (endPort.ParentNode == null && startPort.ParentNode != null)
+                    {
+                        endPort.SetParentNode(startPort.ParentNode);
+                    }
+
+                    // どちらも「現在接続あり」とマーク
+                    startPort.IsConnected = true;
+                    endPort.IsConnected = true;
+                }
+
+                // 確定済みリストに移動
+                finalized.Add(current);
+                current = null;
+                return;
             }
-            else
-            {
-                Debug.Log("[BezierConnectionManager] Clicked start port again (ignored).");
-            }
+
+            // ② 開始ポートと同じポート: 現在の線をキャンセル
+            Debug.Log("[BezierConnectionManager] Clicked start port again -> cancel current curve.");
+            current.CancelCurve();
+            Destroy(current.gameObject);
+            current = null;
         }
     }
 
@@ -63,7 +100,6 @@ public class BezierConnectionManager : MonoBehaviour
     public void DisconnectPort(Port port)
     {
         if (port == null) return;
-
         // 進行中の線があり、かつその始点がこのポートならキャンセルして削除
         if (current != null && current.IsDrawing && !current.IsFinalized)
         {
@@ -72,6 +108,33 @@ public class BezierConnectionManager : MonoBehaviour
                 current.CancelCurve();
                 Destroy(current.gameObject);
                 current = null;
+            }
+        }
+
+        // 確定済みの線のうち、このポートを始点/終点に持つものを削除
+        for (int i = finalized.Count - 1; i >= 0; i--)
+        {
+            var bez = finalized[i];
+            if (bez == null)
+            {
+                finalized.RemoveAt(i);
+                continue;
+            }
+
+            var start = GetPortFromBezier(bez, true);
+            var end = GetPortFromBezier(bez, false);
+            if (start == port || end == port)
+            {
+                // 接続状態フラグを更新
+                if (start != null) start.IsConnected = false;
+                if (end != null) end.IsConnected = false;
+
+                // InferenceBar 側の ParentNode をクリア（シーケント側は保持）
+                ClearInferenceBarSideParent(start, end);
+
+                bez.CancelCurve();
+                Destroy(bez.gameObject);
+                finalized.RemoveAt(i);
             }
         }
     }
@@ -89,6 +152,32 @@ public class BezierConnectionManager : MonoBehaviour
                 current.CancelCurve();
                 Destroy(current.gameObject);
                 current = null;
+            }
+        }
+
+        // 確定済みの接続も、破棄されたポートを含むものは削除
+        for (int i = finalized.Count - 1; i >= 0; i--)
+        {
+            var bez = finalized[i];
+            if (bez == null)
+            {
+                finalized.RemoveAt(i);
+                continue;
+            }
+
+            var start = GetPortFromBezier(bez, true);
+            var end = GetPortFromBezier(bez, false);
+            if (start == port || end == port)
+            {
+                // 接続状態フラグを更新
+                if (start != null) start.IsConnected = false;
+                if (end != null) end.IsConnected = false;
+
+                // InferenceBar 側の ParentNode をクリア（シーケント側は保持）
+                ClearInferenceBarSideParent(start, end);
+                bez.CancelCurve();
+                Destroy(bez.gameObject);
+                finalized.RemoveAt(i);
             }
         }
     }
@@ -118,6 +207,32 @@ public class BezierConnectionManager : MonoBehaviour
         var f = typeof(BezieRenderer).GetField("startPoint", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
         if (f != null) return (Vector3)f.GetValue(current);
         return Vector3.zero;
+    }
+
+    // 反射で BezieRenderer に保持されている Port 参照を取得
+    private Port GetPortFromBezier(BezieRenderer bez, bool start)
+    {
+        if (bez == null) return null;
+        var fieldName = start ? "startPort" : "endPort";
+        var f = typeof(BezieRenderer).GetField(fieldName, System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+        return f != null ? f.GetValue(bez) as Port : null;
+    }
+
+    // 接続解除時に、元々 ParentNode が null だった側（= InferenceBar 側）だけを null に戻す
+    private void ClearInferenceBarSideParent(Port a, Port b)
+    {
+        if (a == null || b == null) return;
+
+        // 「もともと null だった側」を null に戻したいので、
+        // 現在 null でない方はシーケント側だとみなし、null 側だけクリアする。
+        if (a.ParentNode == null && b.ParentNode != null)
+        {
+            a.SetParentNode(null);
+        }
+        else if (b.ParentNode == null && a.ParentNode != null)
+        {
+            b.SetParentNode(null);
+        }
     }
 
     private void SetPrivateField(object obj, string name, object value)

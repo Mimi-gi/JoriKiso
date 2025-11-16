@@ -782,17 +782,22 @@ namespace FormalSystem.LK
     {
         public static IEnumerable<Sequent> EnumerateConclusions(IReadOnlyList<Sequent> premises, Rule rule)
         {
+            // 任意性のあるルール（サジェスト対象外）
+            // - orR: 後件の元素を X∨Y の形に拡張する際、Y の選択が任意
+            // - andL: 前件の A∧B を A または B に置き換える際、選択が任意
+            // - WL/WR: 新しい式を任意追加するため列挙不能
+            if (rule == Rule.orR || rule == Rule.andL || rule == Rule.WL || rule == Rule.WR)
+            {
+                return Enumerable.Empty<Sequent>();
+            }
+
             switch (rule)
             {
                 case Rule.I:
                     // 任意の式 A に対し A ⊢ A を生成。前提不要なので列挙不能 -> 空 or 全変数? ここでは空 (外部で明示生成)。
                     return Enumerable.Empty<Sequent>();
-                case Rule.andL:
-                    return InferAndL(premises);
                 case Rule.andR:
                     return InferAndR(premises);
-                case Rule.orR:
-                    return InferOrR(premises);
                 case Rule.orL:
                     return InferOrL(premises);
                 case Rule.impL:
@@ -805,10 +810,6 @@ namespace FormalSystem.LK
                     return InferNotR(premises);
                 case Rule.Cut:
                     return InferCut(premises);
-                case Rule.WL:
-                case Rule.WR:
-                    // Weakening は新規式選択自由度があるため列挙不能（ユーザ入力必須）
-                    return Enumerable.Empty<Sequent>();
                 case Rule.CL:
                     return InferCL(premises);
                 case Rule.CR:
@@ -816,6 +817,57 @@ namespace FormalSystem.LK
                 default:
                     return Enumerable.Empty<Sequent>();
             }
+        }
+
+        /// <summary>
+        /// 与えられた前提シーケント列と結論シーケントから、局所的に妥当な規則候補を列挙する。
+        /// Proof.CheckValidity を全ての Rule について試し、妥当なもののみ返す。
+        /// 
+        /// ただし、以下の任意性のあるルールは除外される:
+        /// - orR: 後件の元素を任意の X∨Y に拡張可能（Y が不定）
+        /// - andL: 前件の A∧B を A または B のいずれかに置き換え可能（選択が不定）
+        /// - WL/WR: 新しい式を任意追加可能（追加内容が不定）
+        /// </summary>
+        public static IEnumerable<Rule> EnumerateRules(IReadOnlyList<Sequent> premises, Sequent conclusion)
+        {
+            // 各前提シーケントからダミーの葉 Proof を作る（ルール I で仮置き）
+            var premiseProofs = premises
+                .Select(s => new Proof(new List<Proof>(), s, Rule.I))
+                .ToList();
+
+            foreach (Rule rule in Enum.GetValues(typeof(Rule)))
+            {
+                // 任意性のあるルールは除外
+                if (rule == Rule.orR || rule == Rule.andL || rule == Rule.WL || rule == Rule.WR)
+                {
+                    continue;
+                }
+
+                var proof = new Proof(premiseProofs, conclusion, rule);
+                if (proof.IsValid)
+                {
+                    yield return rule;
+                }
+            }
+        }
+
+        /// <summary>
+        /// 前提シーケント列と結論シーケントから、妥当な規則がちょうど1つに絞れる場合にそれを返す。
+        /// 0個または2個以上マッチする場合は null を返す。
+        /// </summary>
+        public static Rule? InferUniqueRule(IReadOnlyList<Sequent> premises, Sequent conclusion)
+        {
+            Rule? found = null;
+            foreach (var r in EnumerateRules(premises, conclusion))
+            {
+                if (found.HasValue)
+                {
+                    // 2個以上マッチしたので一意でない
+                    return null;
+                }
+                found = r;
+            }
+            return found;
         }
 
         private static IEnumerable<Sequent> InferAndL(IReadOnlyList<Sequent> premises)
@@ -839,25 +891,31 @@ namespace FormalSystem.LK
 
         private static IEnumerable<Sequent> InferAndR(IReadOnlyList<Sequent> premises)
         {
-            if (premises.Count != 2) return Enumerable.Empty<Sequent>();
-            var p0 = premises[0];
-            var p1 = premises[1];
-            var ante = new List<Formula>(p0.Antecedents);
-            ante.AddRange(p1.Antecedents);
+            // 前提から2つを選ぶすべての組み合わせで InferAndR を実行
             var results = new List<Sequent>();
-            foreach (var a in p0.Consequents)
+            
+            foreach (var combo in Combinations(premises.Count, 2))
             {
-                foreach (var b in p1.Consequents)
+                var p0 = premises[combo[0]];
+                var p1 = premises[combo[1]];
+                var ante = new List<Formula>(p0.Antecedents);
+                ante.AddRange(p1.Antecedents);
+                
+                foreach (var a in p0.Consequents)
                 {
-                    var cons = new List<Formula>(p0.Consequents);
-                    cons.AddRange(p1.Consequents);
-                    // A,B を 1 つずつ除去
-                    RemoveOnce(cons, a);
-                    RemoveOnce(cons, b);
-                    cons.Add(new And(a, b));
-                    results.Add(new Sequent(new Formulas(ante), new Formulas(cons)));
+                    foreach (var b in p1.Consequents)
+                    {
+                        var cons = new List<Formula>(p0.Consequents);
+                        cons.AddRange(p1.Consequents);
+                        // A,B を 1 つずつ除去
+                        RemoveOnce(cons, a);
+                        RemoveOnce(cons, b);
+                        cons.Add(new And(a, b));
+                        results.Add(new Sequent(new Formulas(ante), new Formulas(cons)));
+                    }
                 }
             }
+            
             return Distinct(results);
         }
 
@@ -879,51 +937,64 @@ namespace FormalSystem.LK
 
         private static IEnumerable<Sequent> InferOrL(IReadOnlyList<Sequent> premises)
         {
-            if (premises.Count != 2) return Enumerable.Empty<Sequent>();
-            var p0 = premises[0];
-            var p1 = premises[1];
-            var cons = new List<Formula>(p0.Consequents);
-            cons.AddRange(p1.Consequents);
+            // 前提から2つを選ぶすべての組み合わせで InferOrL を実行
             var results = new List<Sequent>();
-            foreach (var a in p0.Antecedents)
+            
+            foreach (var combo in Combinations(premises.Count, 2))
             {
-                foreach (var b in p1.Antecedents)
+                var p0 = premises[combo[0]];
+                var p1 = premises[combo[1]];
+                var cons = new List<Formula>(p0.Consequents);
+                cons.AddRange(p1.Consequents);
+                
+                foreach (var a in p0.Antecedents)
                 {
-                    var ante = new List<Formula>(p0.Antecedents);
-                    ante.AddRange(p1.Antecedents);
-                    // A,B を除去し A∨B 追加
-                    RemoveOnce(ante, a);
-                    RemoveOnce(ante, b);
-                    ante.Add(new Or(a, b));
-                    results.Add(new Sequent(new Formulas(ante), new Formulas(cons)));
+                    foreach (var b in p1.Antecedents)
+                    {
+                        var ante = new List<Formula>(p0.Antecedents);
+                        ante.AddRange(p1.Antecedents);
+                        // A,B を除去し A∨B 追加
+                        RemoveOnce(ante, a);
+                        RemoveOnce(ante, b);
+                        ante.Add(new Or(a, b));
+                        results.Add(new Sequent(new Formulas(ante), new Formulas(cons)));
+                    }
                 }
             }
+            
             return Distinct(results);
         }
 
         private static IEnumerable<Sequent> InferImpL(IReadOnlyList<Sequent> premises)
         {
-            if (premises.Count != 2) return Enumerable.Empty<Sequent>();
-            var p0 = premises[0];
-            var p1 = premises[1];
-            var anteAll = new List<Formula>(p0.Antecedents);
-            anteAll.AddRange(p1.Antecedents);
-            var consAll = new List<Formula>(p0.Consequents);
-            consAll.AddRange(p1.Consequents);
+            // 前提から2つを選ぶすべての組み合わせで InferImpL を実行
             var results = new List<Sequent>();
-            foreach (var A in consAll)
+            
+            foreach (var combo in Combinations(premises.Count, 2))
             {
-                foreach (var B in anteAll)
+                var p0 = premises[combo[0]];
+                var p1 = premises[combo[1]];
+                var anteAll = new List<Formula>(p0.Antecedents);
+                anteAll.AddRange(p1.Antecedents);
+                var consAll = new List<Formula>(p0.Consequents);
+                consAll.AddRange(p1.Consequents);
+                
+                // p0の後件の各式とp1の前件の各式のペアで A→B を作る
+                foreach (var A in p0.Consequents)
                 {
-                    var ante = new List<Formula>(anteAll);
-                    var cons = new List<Formula>(consAll);
-                    // Remove B from ante, A from cons, add A->B to ante
-                    if (!RemoveOnce(ante, B)) continue;
-                    if (!RemoveOnce(cons, A)) continue;
-                    ante.Add(new Implication(A, B));
-                    results.Add(new Sequent(new Formulas(ante), new Formulas(cons)));
+                    foreach (var B in p1.Antecedents)
+                    {
+                        var ante = new List<Formula>(anteAll);
+                        var cons = new List<Formula>(consAll);
+                        // Remove B from ante, A from cons, add A->B to ante
+                        if (!RemoveOnce(ante, B)) continue;
+                        if (!RemoveOnce(cons, A)) continue;
+                        ante.Add(new Implication(A, B));
+                        results.Add(new Sequent(new Formulas(ante), new Formulas(cons)));
+                    }
                 }
             }
+            
             return Distinct(results);
         }
 
@@ -979,23 +1050,59 @@ namespace FormalSystem.LK
 
         private static IEnumerable<Sequent> InferCut(IReadOnlyList<Sequent> premises)
         {
-            if (premises.Count != 2) return Enumerable.Empty<Sequent>();
-            var p0 = premises[0];
-            var p1 = premises[1];
-            // 共通式: 右側(第一前提後件) ∩ 左側(第二前提前件) 多重集合回数分候補
-            var common = p0.Consequents.MultisetIntersect(p1.Antecedents);
+            // 前提から2つを選ぶすべての組み合わせで InferCut を実行
             var results = new List<Sequent>();
-            foreach (var a in common)
+            
+            foreach (var combo in Combinations(premises.Count, 2))
             {
-                var ante = new List<Formula>(p0.Antecedents);
-                var ante2 = new List<Formula>(p1.Antecedents);
-                RemoveOnce(ante2, a); // second premise antecedents から cut formula 除去
-                ante.AddRange(ante2);
-                var cons = new List<Formula>(p0.Consequents);
-                RemoveOnce(cons, a); // first premise consequents から除去
-                cons.AddRange(p1.Consequents);
-                results.Add(new Sequent(new Formulas(ante), new Formulas(cons)));
+                var p0 = premises[combo[0]];
+                var p1 = premises[combo[1]];
+                
+                // 共通式: 右側(第一前提後件) ∩ 左側(第二前提前件) 多重集合の共通部分
+                var common = p0.Consequents.MultisetIntersect(p1.Antecedents);
+                
+                if (common.Count == 0) continue;
+                
+                // 共通式の部分集合すべてに対して Cut を試みる（空集合を除く）
+                // 共通式の部分集合を列挙（1個以上）
+                var commonList = common.ToList();
+                int subsetCount = 1 << commonList.Count; // 2^n 個の部分集合
+                
+                for (int mask = 1; mask < subsetCount; mask++) // mask=0 は空集合なのでスキップ
+                {
+                    var cutFormulas = new List<Formula>();
+                    for (int i = 0; i < commonList.Count; i++)
+                    {
+                        if ((mask & (1 << i)) != 0)
+                        {
+                            cutFormulas.Add(commonList[i]);
+                        }
+                    }
+                    
+                    // cutFormulas を除去したシーケントを構成
+                    var ante = new List<Formula>(p0.Antecedents);
+                    var ante2 = new List<Formula>(p1.Antecedents);
+                    
+                    // cutFormulas を ante2 から除去
+                    foreach (var f in cutFormulas)
+                    {
+                        RemoveOnce(ante2, f);
+                    }
+                    ante.AddRange(ante2);
+                    
+                    var cons = new List<Formula>(p0.Consequents);
+                    
+                    // cutFormulas を cons から除去
+                    foreach (var f in cutFormulas)
+                    {
+                        RemoveOnce(cons, f);
+                    }
+                    cons.AddRange(p1.Consequents);
+                    
+                    results.Add(new Sequent(new Formulas(ante), new Formulas(cons)));
+                }
             }
+            
             return Distinct(results);
         }
 
@@ -1057,6 +1164,37 @@ namespace FormalSystem.LK
             if (idx < 0) return false;
             list.RemoveAt(idx);
             return true;
+        }
+
+        /// <summary>
+        /// n個の要素からk個を選ぶ組み合わせを生成する。
+        /// 例: n=4, k=2 -> [0,1], [0,2], [0,3], [1,2], [1,3], [2,3] (6通り)
+        /// </summary>
+        private static IEnumerable<List<int>> Combinations(int n, int k)
+        {
+            if (k > n || k < 0) yield break;
+            if (k == 0)
+            {
+                yield return new List<int>();
+                yield break;
+            }
+            
+            var result = new List<int>();
+            var indices = new int[k];
+            for (int i = 0; i < k; i++) indices[i] = i;
+            
+            while (true)
+            {
+                yield return new List<int>(indices);
+                
+                // 次の組み合わせを生成
+                int i = k - 1;
+                while (i >= 0 && indices[i] == n - k + i) i--;
+                if (i < 0) break;
+                
+                indices[i]++;
+                for (int j = i + 1; j < k; j++) indices[j] = indices[j - 1] + 1;
+            }
         }
 
         private static IEnumerable<Sequent> Distinct(IEnumerable<Sequent> seqs)
