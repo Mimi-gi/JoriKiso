@@ -12,6 +12,8 @@ public class NodeCreator : MonoBehaviour
     [SerializeField] GameObject SequentPrefab;
     [SerializeField] GameObject InferenceBarPrefab;
     [SerializeField] GameObject StartBarPrefab;
+    [SerializeField] Color trueColor;
+    [SerializeField] Color falseColor;
 
     // 静的参照: 自動生成用にランタイムで登録
     static GameObject[] sVariables;
@@ -25,7 +27,21 @@ public class NodeCreator : MonoBehaviour
     }
 
     public void LogTrue(){
-        Debug.Log(ValidateAllInferenceChains());
+        bool isValid = ValidateAllInferenceChains();
+        
+        // カメラの背景色を妥当性に応じて変更
+        var camera = Camera.main;
+        if (camera != null)
+        {
+            camera.backgroundColor = isValid ? trueColor : falseColor;
+            Debug.Log($"[NodeCreator.LogTrue] Camera background color set to {(isValid ? "trueColor" : "falseColor")}");
+        }
+        else
+        {
+            Debug.LogWarning("[NodeCreator.LogTrue] Main camera not found");
+        }
+        
+        Debug.Log(isValid);
     }
 
     /// <summary>
@@ -211,6 +227,16 @@ public class NodeCreator : MonoBehaviour
     }
 
     // -------- 静的API: Formula から Node を再帰生成 --------
+    /// <summary>
+    /// Formula から Node を再帰生成する。
+    /// 複合式（¬B → ¬A など）の場合は、構成要素から段階的に構築する。
+    /// 例: ¬B → ¬A の場合
+    ///   1. B を作成
+    ///   2. ¬ を作成して B をはめる
+    ///   3. A を作成
+    ///   4. ¬ を作成して A をはめる
+    ///   5. → を作成して ¬B と ¬A をはめる
+    /// </summary>
     public static Node CreateNodeFromFormula(Formula formula, Transform parent)
     {
         if (formula == null || parent == null) return null;
@@ -219,63 +245,156 @@ public class NodeCreator : MonoBehaviour
             return null;
         }
 
-        GameObject go = null;
-        Node node = null;
+        Debug.Log($"[NodeCreator.CreateNodeFromFormula] Creating node from formula: {formula}");
 
         switch (formula)
         {
             case Variable v:
-                int idx = (int)v.Name;
-                if (idx < 0 || idx >= sVariables.Length) { Debug.LogError($"No variable prefab for {v.Name}"); return null; }
-                go = Object.Instantiate(sVariables[idx], parent);
-                node = go.GetComponent<Node>();
-                break;
+                return CreateVariableNode(v, parent);
             case Not nt:
-                // Operators[0] を Not と想定
-                if (sOperators.Length < 1) { Debug.LogError("Not prefab missing"); return null; }
-                go = Object.Instantiate(sOperators[0], parent);
-                node = go.GetComponent<Node>();
-                var unary = node as UnaryNode;
-                if (unary != null)
-                {
-                    var child = CreateNodeFromFormula(nt.Operand, unary.Frame.RectTransform);
-                    // Frame に直接セット
-                    unary.Frame.SetNodeDirect(child);
-                }
-                break;
+                return CreateNotNode(nt, parent);
             case And and:
-                go = InstantiateBinary(1, and.Left, and.Right, parent);
-                node = go?.GetComponent<Node>();
-                break;
+                return CreateAndNode(and, parent);
             case Or or:
-                go = InstantiateBinary(2, or.Left, or.Right, parent);
-                node = go?.GetComponent<Node>();
-                break;
+                return CreateOrNode(or, parent);
             case Implication imp:
-                go = InstantiateBinary(3, imp.Left, imp.Right, parent);
-                node = go?.GetComponent<Node>();
-                break;
+                return CreateImplicationNode(imp, parent);
             default:
-                Debug.LogError("Unsupported formula type for automatic node creation.");
+                Debug.LogError($"[NodeCreator.CreateNodeFromFormula] Unsupported formula type: {formula.GetType()}");
                 return null;
         }
+    }
+
+    // Variable ノード生成
+    private static Node CreateVariableNode(Variable v, Transform parent)
+    {
+        int idx = (int)v.Name;
+        if (idx < 0 || idx >= sVariables.Length) 
+        { 
+            Debug.LogError($"[NodeCreator.CreateVariableNode] No variable prefab for {v.Name}"); 
+            return null; 
+        }
+        var go = Object.Instantiate(sVariables[idx], parent);
+        var node = go.GetComponent<Node>();
+        Debug.Log($"[NodeCreator.CreateVariableNode] Created variable {v.Name}");
         return node;
     }
 
-    // Binary helper: opIndex = 1:And 2:Or 3:Implication (Operators 配列前提)
-    static GameObject InstantiateBinary(int opIndex, Formula left, Formula right, Transform parent)
+    // Not ノード生成: 先に operand を作成してから Not ノードを作成してはめる
+    private static Node CreateNotNode(Not nt, Transform parent)
     {
-        if (opIndex >= sOperators.Length) { Debug.LogError("Binary operator prefab missing index " + opIndex); return null; }
-        var go = Object.Instantiate(sOperators[opIndex], parent);
-        var bn = go.GetComponent<BinaryNode>();
-        if (bn != null)
-        {
-            var leftNode = CreateNodeFromFormula(left, bn.LeftFrame.RectTransform);
-            var rightNode = CreateNodeFromFormula(right, bn.RightFrame.RectTransform);
-            bn.LeftFrame.SetNodeDirect(leftNode);
-            bn.RightFrame.SetNodeDirect(rightNode);
+        Debug.Log($"[NodeCreator.CreateNotNode] Creating Not node for operand: {nt.Operand}");
+        
+        if (sOperators.Length < 1) 
+        { 
+            Debug.LogError("[NodeCreator.CreateNotNode] Not prefab missing"); 
+            return null; 
         }
-        return go;
+
+        // Not プレハブを作成
+        var go = Object.Instantiate(sOperators[0], parent);
+        var node = go.GetComponent<Node>();
+        var unary = node as UnaryNode;
+        
+        if (unary == null)
+        {
+            Debug.LogError("[NodeCreator.CreateNotNode] Not node is not a UnaryNode");
+            Object.Destroy(go);
+            return null;
+        }
+
+        // operand ノードを先に Frame 内に作成
+        Debug.Log($"[NodeCreator.CreateNotNode] Creating operand node in Not.Frame");
+        var operandNode = CreateNodeFromFormula(nt.Operand, unary.Frame.RectTransform);
+        
+        if (operandNode == null)
+        {
+            Debug.LogError("[NodeCreator.CreateNotNode] Failed to create operand node");
+            Object.Destroy(go);
+            return null;
+        }
+
+        // operand を Not.Frame にセット
+        unary.Frame.SetNodeDirect(operandNode);
+        Debug.Log($"[NodeCreator.CreateNotNode] Not node created successfully with operand {nt.Operand}");
+        
+        return node;
+    }
+
+    // And ノード生成: 先に左右 operand を作成してから And ノードを作成してはめる
+    private static Node CreateAndNode(And and, Transform parent)
+    {
+        Debug.Log($"[NodeCreator.CreateAndNode] Creating And node: Left={and.Left}, Right={and.Right}");
+        return CreateBinaryOperatorNode(1, and.Left, and.Right, parent, "And");
+    }
+
+    // Or ノード生成: 先に左右 operand を作成してから Or ノードを作成してはめる
+    private static Node CreateOrNode(Or or, Transform parent)
+    {
+        Debug.Log($"[NodeCreator.CreateOrNode] Creating Or node: Left={or.Left}, Right={or.Right}");
+        return CreateBinaryOperatorNode(2, or.Left, or.Right, parent, "Or");
+    }
+
+    // Implication ノード生成: 先に左右 operand を作成してから Implication ノードを作成してはめる
+    private static Node CreateImplicationNode(Implication imp, Transform parent)
+    {
+        Debug.Log($"[NodeCreator.CreateImplicationNode] Creating Implication node: Left={imp.Left}, Right={imp.Right}");
+        return CreateBinaryOperatorNode(3, imp.Left, imp.Right, parent, "Implication");
+    }
+
+    // Binary operator ノード生成の共通処理
+    // 左右の子ノードを先に作成してから、親の Binary ノードを作成してはめる
+    private static Node CreateBinaryOperatorNode(int opIndex, Formula left, Formula right, Transform parent, string opName)
+    {
+        if (opIndex >= sOperators.Length) 
+        { 
+            Debug.LogError($"[NodeCreator.CreateBinaryOperatorNode] Binary operator prefab missing index {opIndex}"); 
+            return null; 
+        }
+
+        // Step 1: 左の operand ノードを作成
+        Debug.Log($"[NodeCreator.CreateBinaryOperatorNode] Step 1: Creating left operand for {opName}");
+        var leftNode = CreateNodeFromFormula(left, parent);
+        if (leftNode == null)
+        {
+            Debug.LogError($"[NodeCreator.CreateBinaryOperatorNode] Failed to create left operand for {opName}");
+            return null;
+        }
+
+        // Step 2: 右の operand ノードを作成
+        Debug.Log($"[NodeCreator.CreateBinaryOperatorNode] Step 2: Creating right operand for {opName}");
+        var rightNode = CreateNodeFromFormula(right, parent);
+        if (rightNode == null)
+        {
+            Debug.LogError($"[NodeCreator.CreateBinaryOperatorNode] Failed to create right operand for {opName}");
+            Object.Destroy(leftNode.gameObject);
+            return null;
+        }
+
+        // Step 3: Binary operator ノードを親に作成
+        Debug.Log($"[NodeCreator.CreateBinaryOperatorNode] Step 3: Creating {opName} operator node");
+        var go = Object.Instantiate(sOperators[opIndex], parent);
+        var node = go.GetComponent<Node>();
+        var bn = node as BinaryNode;
+
+        if (bn == null)
+        {
+            Debug.LogError($"[NodeCreator.CreateBinaryOperatorNode] {opName} node is not a BinaryNode");
+            Object.Destroy(go);
+            Object.Destroy(leftNode.gameObject);
+            Object.Destroy(rightNode.gameObject);
+            return null;
+        }
+
+        // Step 4: 左右の operand ノードを Binary ノードの Frame にはめる
+        Debug.Log($"[NodeCreator.CreateBinaryOperatorNode] Step 4: Setting left operand to {opName}.LeftFrame");
+        bn.LeftFrame.SetNodeDirect(leftNode);
+
+        Debug.Log($"[NodeCreator.CreateBinaryOperatorNode] Step 5: Setting right operand to {opName}.RightFrame");
+        bn.RightFrame.SetNodeDirect(rightNode);
+
+        Debug.Log($"[NodeCreator.CreateBinaryOperatorNode] {opName} node created successfully");
+        return node;
     }
 
     // -------- 静的API: Sequent から SequentNode を生成 --------
@@ -283,67 +402,86 @@ public class NodeCreator : MonoBehaviour
     public static SequentNode CreateSequentNode(Sequent sequent, SequentNode sequentPrefab, Transform parent)
     {
         if (sequentPrefab == null || parent == null) return null;
-        Debug.Log("[NodeCreator] CreateSequentNode start: Antecedents=" + sequent.Antecedents.Count + ", Consequents=" + sequent.Consequents.Count);
+        Debug.Log("[NodeCreator.CreateSequentNode] CreateSequentNode start: Antecedents=" + sequent.Antecedents.Count + ", Consequents=" + sequent.Consequents.Count);
+        
         var inst = Object.Instantiate(sequentPrefab, parent);
 
-        // Antecedents（左側）
+        // Step 1: すべての Antecedent ノードを先に構築
+        Debug.Log("[NodeCreator.CreateSequentNode] Step 1: Building all antecedent nodes");
+        var antecedentNodes = new List<Node>();
         for (int i = 0; i < sequent.Antecedents.Count; i++)
         {
-            Debug.Log("[NodeCreator] Adding left frame " + i);
+            Debug.Log($"[NodeCreator.CreateSequentNode] Building antecedent node {i}: {sequent.Antecedents[i]}");
+            var node = CreateNodeFromFormula(sequent.Antecedents[i], inst.transform);
+            if (node == null)
+            {
+                Debug.LogError($"[NodeCreator.CreateSequentNode] Failed to create antecedent node {i}");
+                Object.Destroy(inst.gameObject);
+                return null;
+            }
+            antecedentNodes.Add(node);
+        }
+
+        // Step 2: すべての Consequent ノードを先に構築
+        Debug.Log("[NodeCreator.CreateSequentNode] Step 2: Building all consequent nodes");
+        var consequentNodes = new List<Node>();
+        for (int i = 0; i < sequent.Consequents.Count; i++)
+        {
+            Debug.Log($"[NodeCreator.CreateSequentNode] Building consequent node {i}: {sequent.Consequents[i]}");
+            var node = CreateNodeFromFormula(sequent.Consequents[i], inst.transform);
+            if (node == null)
+            {
+                Debug.LogError($"[NodeCreator.CreateSequentNode] Failed to create consequent node {i}");
+                Object.Destroy(inst.gameObject);
+                return null;
+            }
+            consequentNodes.Add(node);
+        }
+
+        // Step 3: Antecedent（左側）フレームを追加してノードをはめる
+        Debug.Log("[NodeCreator.CreateSequentNode] Step 3: Adding left frames and fitting antecedent nodes");
+        for (int i = 0; i < antecedentNodes.Count; i++)
+        {
+            Debug.Log($"[NodeCreator.CreateSequentNode] Adding left frame {i}");
             inst.AddLeftFrame();
-            Debug.Log("[NodeCreator] Left frame added. Total left frames: " + inst.LeftFrames.Count);
+            Debug.Log($"[NodeCreator.CreateSequentNode] Left frame added. Total left frames: {inst.LeftFrames.Count}");
+            
             var frame = inst.LeftFrames[inst.LeftFrames.Count - 1];
             if (frame == null)
             {
-                Debug.LogError("[NodeCreator] Frame is null after AddLeftFrame");
-                continue;
+                Debug.LogError("[NodeCreator.CreateSequentNode] Frame is null after AddLeftFrame");
+                Object.Destroy(inst.gameObject);
+                return null;
             }
-            if (frame.RectTransform == null)
-            {
-                Debug.LogError("[NodeCreator] Frame.RectTransform is null");
-                continue;
-            }
-            Debug.Log("[NodeCreator] Creating node from formula: " + sequent.Antecedents[i]);
-            var node = CreateNodeFromFormula(sequent.Antecedents[i], frame.RectTransform);
-            if (node == null)
-            {
-                Debug.LogError("[NodeCreator] Node creation failed for antecedent " + i);
-                continue;
-            }
-            Debug.Log("[NodeCreator] Setting node direct to frame");
-            frame.SetNodeDirect(node);
+
+            Debug.Log($"[NodeCreator.CreateSequentNode] Setting antecedent node {i} to left frame");
+            frame.SetNodeDirect(antecedentNodes[i]);
         }
-        // Consequents（右側）
-        for (int i = 0; i < sequent.Consequents.Count; i++)
+
+        // Step 4: Consequent（右側）フレームを追加してノードをはめる
+        Debug.Log("[NodeCreator.CreateSequentNode] Step 4: Adding right frames and fitting consequent nodes");
+        for (int i = 0; i < consequentNodes.Count; i++)
         {
-            Debug.Log("[NodeCreator] Adding right frame " + i);
+            Debug.Log($"[NodeCreator.CreateSequentNode] Adding right frame {i}");
             inst.AddRightFrame();
-            Debug.Log("[NodeCreator] Right frame added. Total right frames: " + inst.RightFrames.Count);
+            Debug.Log($"[NodeCreator.CreateSequentNode] Right frame added. Total right frames: {inst.RightFrames.Count}");
+            
             var frame = inst.RightFrames[inst.RightFrames.Count - 1];
             if (frame == null)
             {
-                Debug.LogError("[NodeCreator] Frame is null after AddRightFrame");
-                continue;
+                Debug.LogError("[NodeCreator.CreateSequentNode] Frame is null after AddRightFrame");
+                Object.Destroy(inst.gameObject);
+                return null;
             }
-            if (frame.RectTransform == null)
-            {
-                Debug.LogError("[NodeCreator] Frame.RectTransform is null");
-                continue;
-            }
-            Debug.Log("[NodeCreator] Creating node from formula: " + sequent.Consequents[i]);
-            var node = CreateNodeFromFormula(sequent.Consequents[i], frame.RectTransform);
-            if (node == null)
-            {
-                Debug.LogError("[NodeCreator] Node creation failed for consequent " + i);
-                continue;
-            }
-            Debug.Log("[NodeCreator] Setting node direct to frame");
-            frame.SetNodeDirect(node);
+
+            Debug.Log($"[NodeCreator.CreateSequentNode] Setting consequent node {i} to right frame");
+            frame.SetNodeDirect(consequentNodes[i]);
         }
-        // 内部 Sequent プロパティ更新
-        Debug.Log("[NodeCreator] Calling TryGenerateSequentFromFrames");
+
+        // Step 5: 内部 Sequent プロパティ更新
+        Debug.Log("[NodeCreator.CreateSequentNode] Step 5: Calling TryGenerateSequentFromFrames");
         inst.TryGenerateSequentFromFrames(out _);
-        Debug.Log("[NodeCreator] CreateSequentNode complete");
+        Debug.Log("[NodeCreator.CreateSequentNode] CreateSequentNode complete");
         return inst;
     }
 

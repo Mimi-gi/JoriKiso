@@ -1507,6 +1507,7 @@ GameObject:
   - component: {fileID: 519420031}
   - component: {fileID: 519420029}
   - component: {fileID: 519420030}
+  - component: {fileID: 519420033}
   m_Layer: 0
   m_Name: Main Camera
   m_TagString: MainCamera
@@ -1632,6 +1633,18 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &519420033
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 519420028}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 14743971995a4df4c82b1128aafaaf4d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Test
 --- !u!1 &577644435
 GameObject:
   m_ObjectHideFlags: 0
@@ -6716,6 +6729,8 @@ MonoBehaviour:
   SequentPrefab: {fileID: 6578200471688790609, guid: ec9d6a07640c952478849006b32dfa6a, type: 3}
   InferenceBarPrefab: {fileID: 5590638425131000905, guid: b14b6fb5be9c65b44b0d32882e61dd50, type: 3}
   StartBarPrefab: {fileID: 1680346843835769268, guid: 1c4898ed102b6004dac2a282e9db85ee, type: 3}
+  trueColor: {r: 0.36308292, g: 0.81886786, b: 0.5787032, a: 0}
+  falseColor: {r: 0.4641509, g: 0.30739048, b: 0.30739048, a: 0}
 --- !u!114 &1856557806
 MonoBehaviour:
   m_ObjectHideFlags: 0

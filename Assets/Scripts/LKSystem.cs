@@ -916,7 +916,7 @@ namespace FormalSystem.LK
                 }
             }
             
-            return Distinct(results);
+            return results;
         }
 
         private static IEnumerable<Sequent> InferOrR(IReadOnlyList<Sequent> premises)
@@ -962,7 +962,7 @@ namespace FormalSystem.LK
                 }
             }
             
-            return Distinct(results);
+            return results;
         }
 
         private static IEnumerable<Sequent> InferImpL(IReadOnlyList<Sequent> premises)
@@ -979,7 +979,7 @@ namespace FormalSystem.LK
                 var consAll = new List<Formula>(p0.Consequents);
                 consAll.AddRange(p1.Consequents);
                 
-                // p0の後件の各式とp1の前件の各式のペアで A→B を作る
+                // Case 1: p0の後件の各式とp1の前件の各式のペアで A→B を作る
                 foreach (var A in p0.Consequents)
                 {
                     foreach (var B in p1.Antecedents)
@@ -993,9 +993,24 @@ namespace FormalSystem.LK
                         results.Add(new Sequent(new Formulas(ante), new Formulas(cons)));
                     }
                 }
+                
+                // Case 2: p1の後件の各式とp0の前件の各式のペアで A→B を作る (交換則対応)
+                foreach (var A in p1.Consequents)
+                {
+                    foreach (var B in p0.Antecedents)
+                    {
+                        var ante = new List<Formula>(anteAll);
+                        var cons = new List<Formula>(consAll);
+                        // Remove B from ante, A from cons, add A->B to ante
+                        if (!RemoveOnce(ante, B)) continue;
+                        if (!RemoveOnce(cons, A)) continue;
+                        ante.Add(new Implication(A, B));
+                        results.Add(new Sequent(new Formulas(ante), new Formulas(cons)));
+                    }
+                }
             }
             
-            return Distinct(results);
+            return results;
         }
 
         private static IEnumerable<Sequent> InferImpR(IReadOnlyList<Sequent> premises)
@@ -1015,7 +1030,7 @@ namespace FormalSystem.LK
                     results.Add(new Sequent(new Formulas(ante), new Formulas(cons)));
                 }
             }
-            return Distinct(results);
+            return results; // Distinctなし
         }
 
         private static IEnumerable<Sequent> InferNotL(IReadOnlyList<Sequent> premises)
@@ -1030,7 +1045,7 @@ namespace FormalSystem.LK
                 if (!RemoveOnce(cons, A)) continue;
                 results.Add(new Sequent(new Formulas(ante), new Formulas(cons)));
             }
-            return Distinct(results);
+            return results;
         }
 
         private static IEnumerable<Sequent> InferNotR(IReadOnlyList<Sequent> premises)
@@ -1045,7 +1060,7 @@ namespace FormalSystem.LK
                 var cons = new List<Formula>(p.Consequents) { new Not(A) };
                 results.Add(new Sequent(new Formulas(ante), new Formulas(cons)));
             }
-            return Distinct(results);
+            return results;
         }
 
         private static IEnumerable<Sequent> InferCut(IReadOnlyList<Sequent> premises)
@@ -1103,7 +1118,7 @@ namespace FormalSystem.LK
                 }
             }
             
-            return Distinct(results);
+            return results;
         }
 
         private static IEnumerable<Sequent> InferCL(IReadOnlyList<Sequent> premises)
@@ -1117,14 +1132,19 @@ namespace FormalSystem.LK
                 int count = p.Antecedents.CountOf(f);
                 if (count >= 2)
                 {
-                    var ante = new List<Formula>(p.Antecedents);
-                    // 全削除→1つ追加
-                    ante.RemoveAll(x => x == f);
-                    ante.Add(f);
-                    results.Add(new Sequent(new Formulas(ante), new Formulas(p.Consequents)));
+                    // Combination(count, 2) 個の結論を生成
+                    int combinations = count * (count - 1) / 2;
+                    for (int i = 0; i < combinations; i++)
+                    {
+                        var ante = new List<Formula>(p.Antecedents);
+                        // 全削除→1つ追加
+                        ante.RemoveAll(x => x == f);
+                        ante.Add(f);
+                        results.Add(new Sequent(new Formulas(ante), new Formulas(p.Consequents)));
+                    }
                 }
             }
-            return Distinct(results);
+            return results;
         }
 
         private static IEnumerable<Sequent> InferCR(IReadOnlyList<Sequent> premises)
@@ -1138,13 +1158,18 @@ namespace FormalSystem.LK
                 int count = p.Consequents.CountOf(f);
                 if (count >= 2)
                 {
-                    var cons = new List<Formula>(p.Consequents);
-                    cons.RemoveAll(x => x == f);
-                    cons.Add(f);
-                    results.Add(new Sequent(new Formulas(p.Antecedents), new Formulas(cons)));
+                    // Combination(count, 2) 個の結論を生成
+                    int combinations = count * (count - 1) / 2;
+                    for (int i = 0; i < combinations; i++)
+                    {
+                        var cons = new List<Formula>(p.Consequents);
+                        cons.RemoveAll(x => x == f);
+                        cons.Add(f);
+                        results.Add(new Sequent(new Formulas(p.Antecedents), new Formulas(cons)));
+                    }
                 }
             }
-            return Distinct(results);
+            return results;
         }
 
         private static Sequent CreateReplaceOne(Formulas ante, Formulas cons, Formula target, Formula replacement, bool inAntecedent)
